@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>NOTE DE DIMENSIONNEMENT RÉSEAU GALVA</title>
+<style>
+  :root{--maxw:1100px;--line:#d9dde3;--text:#222;--accent:#1976d2}
+  html,body{background:#fff;color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0}
+  .wrap{max-width:var(--maxw);margin:18px auto;padding:16px}
+  h1{font-size:20px;margin:6px 0 14px;text-transform:uppercase;letter-spacing:.6px;text-align:center}
+  form{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}
+  fieldset{border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}
+  legend{font-weight:700}
+  .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  label{font-size:13px;font-weight:600;display:block}
+  input,select{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;margin-top:6px;font-size:14px}
+  .muted{color:#666;font-size:12px}
+  .piece{border:1px dashed var(--line);border-radius:8px;padding:10px;margin-top:10px}
+  .actions{display:flex;gap:10px;justify-content:flex-start;margin-top:12px}
+  button{background:var(--accent);color:#fff;border:none;padding:10px 12px;border-radius:8px;font-weight:700;cursor:pointer}
+  button.secondary{background:#eef3fb;color:#0b3d78}
+  /* Rapport */
+  #rapport{display:none;background:#fff;border:1px solid var(--line);border-radius:8px;padding:16px;margin-top:18px}
+  #rapport h2{text-align:center;margin:0 0 8px;text-transform:uppercase}
+  #rapport .small{font-size:12px;color:#555;margin-bottom:8px}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+  th,td{border:1px solid var(--line);padding:8px;text-align:center}
+  th{background:#f6f7f9}
+  td.left{text-align:left}
+  .justif{font-size:11px;color:#555;text-align:left}
+  tfoot .sum{font-weight:700;background:#fbfdff}
+  .hide-title-on-report h1{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #rapport, #rapport *{visibility:visible}
+    #rapport{position:fixed;left:12mm;top:12mm;right:12mm;bottom:12mm;border:none;padding:0;margin:0}
+    @page{size:A4;margin:12mm}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>NOTE DE DIMENSIONNEMENT RÉSEAU GALVA</h1>
+
+    <form id="form">
+      <!-- ADMIN -->
+      <fieldset>
+        <legend>Données administratives</legend>
+        <div class="grid-2">
+          <div>
+            <label>Installateur (Nom / Société)</label>
+            <input id="inst_nom" placeholder="Ex : Dupont Installations">
+          </div>
+          <div>
+            <label>N° SIRET</label>
+            <input id="inst_siret" placeholder="Ex : 12345678900012">
+          </div>
+          <div>
+            <label>Email installateur</label>
+            <input id="inst_email" type="email" placeholder="contact@exemple.fr">
+          </div>
+          <div>
+            <label>Date de l'étude</label>
+            <input id="date_etude" type="date">
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:10px">
+          <div>
+            <label>Client final</label>
+            <input id="client_nom" placeholder="Nom du client">
+          </div>
+          <div>
+            <label>Email client</label>
+            <input id="client_email" type="email" placeholder="client@exemple.fr">
+          </div>
+          <div style="grid-column:1 / -1; margin-top:8px">
+            <label>Adresse chantier</label>
+            <input id="client_adresse" placeholder="N°, voie, CP, ville">
+          </div>
+        </div>
+      </fieldset>
+
+      <!-- RÉSEAU PRINCIPAL EXTRACTION -->
+      <fieldset>
+        <legend>Réseau principal extraction (arrivée PAC)</legend>
+        <div class="grid-4">
+          <div>
+            <label>Diamètre (mm)</label>
+            <select id="extr_diam"><option value="125">125</option><option value="160">160</option></select>
+          </div>
+          <div>
+            <label>Longueur droite (m)</label>
+            <input id="extr_len" type="number" min="0" step="0.1" value="6">
+          </div>
+          <div>
+            <label>Coudes 30°</label>
+            <input id="extr_c30" type="number" min="0" step="1" value="0">
+          </div>
+          <div>
+            <label>Coudes 45°</label>
+            <input id="extr_c45" type="number" min="0" step="1" value="0">
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top:10px">
+          <div>
+            <label>Coudes 90°</label>
+            <input id="extr_c90" type="number" min="0" step="1" value="2">
+          </div>
+          <div>
+            <label>Piquages (T à 90°) sur tronc</label>
+            <input id="extr_t" type="number" min="0" step="1" value="0">
+          </div>
+          <div></div>
+        </div>
+      </fieldset>
+
+      <!-- PIÈCES D’EAU (Cuisine + autres) -->
+      <fieldset>
+        <legend>Pièces d’eau (branches)</legend>
+        <!-- Cuisine -->
+        <div class="piece" id="piece_cuisine">
+          <strong>CUISINE</strong>
+          <div class="grid-4" style="margin-top:8px">
+            <div>
+              <label>Débit cuisine — Débit mini (m³/h)</label>
+              <input id="cui_q_min" type="number" min="0" step="1" value="45">
+            </div>
+            <div>
+              <label>Grand débit cuisine (m³/h)</label>
+              <input id="cui_q_max" type="number" min="0" step="1" value="135">
+            </div>
+            <div>
+              <label>Diamètre branche</label>
+              <select id="cui_diam"><option value="125">125</option><option value="80">80</option></select>
+            </div>
+            <div>
+              <label>Longueur droite (m)</label>
+              <input id="cui_len" type="number" min="0" step="0.1" value="6">
+            </div>
+          </div>
+          <div class="grid-3" style="margin-top:8px">
+            <div><label>Coudes 30°</label><input id="cui_c30" type="number" min="0" step="1" value="0"></div>
+            <div><label>Coudes 45°</label><input id="cui_c45" type="number" min="0" step="1" value="0"></div>
+            <div><label>Coudes 90°</label><input id="cui_c90" type="number" min="0" step="1" value="2"></div>
+          </div>
+        </div>
+
+        <!-- Autres pièces -->
+        <div id="pieces_autres"></div>
+        <div class="actions" style="margin-top:10px">
+          <button type="button" class="secondary" id="addPieceBtn">+ Ajouter une pièce d'eau</button>
+        </div>
+      </fieldset>
+
+      <!-- RÉSEAU PRINCIPAL REJET + SORTIE -->
+      <fieldset>
+        <legend>Réseau principal rejet & sortie</legend>
+        <div class="grid-4">
+          <div>
+            <label>Diamètre (mm)</label>
+            <select id="rej_diam"><option value="125">125</option><option value="160">160</option></select>
+          </div>
+          <div>
+            <label>Longueur droite (m)</label>
+            <input id="rej_len" type="number" min="0" step="0.1" value="6">
+          </div>
+          <div>
+            <label>Coudes 30°</label>
+            <input id="rej_c30" type="number" min="0" step="1" value="0">
+          </div>
+          <div>
+            <label>Coudes 45°</label>
+            <input id="rej_c45" type="number" min="0" step="1" value="0">
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top:10px">
+          <div><label>Coudes 90°</label><input id="rej_c90" type="number" min="0" step="1" value="1"></div>
+          <div>
+            <label>Sortie</label>
+            <select id="rej_sortie">
+              <option value="façade">Façade (11 Pa)</option>
+              <option value="toiture">Toiture (15 Pa)</option>
+            </select>
+          </div>
+          <div></div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button type="button" id="genBtn">Générer le rapport</button>
+      </div>
+    </form>
+
+    <!-- RAPPORT FINAL -->
+    <div id="rapport">
+      <h2>NOTE DE DIMENSIONNEMENT RÉSEAU GALVA</h2>
+      <div id="r-admin" class="small"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="left">Élément</th>
+            <th>Débit mini<br>(m³/h)</th>
+            <th>Pertes de charges<br>(Pa)</th>
+            <th>Grand débit cuisine<br>(m³/h)</th>
+            <th>Pertes de charges<br>(Pa)</th>
+            <th class="left">Détails calcul</th>
+          </tr>
+        </thead>
+        <tbody id="r-rows"></tbody>
+        <tfoot>
+          <tr class="sum">
+            <td class="left">Somme des débits (débit mini)</td>
+            <td id="sumQmini">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td></td>
+          </tr>
+          <tr class="sum">
+            <td class="left">Pertes de charges totales (débit mini)</td>
+            <td>—</td>
+            <td id="sumPmini">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td></td>
+          </tr>
+          <tr class="sum">
+            <td class="left">Somme des débits (grand débit cuisine)</td>
+            <td id="sumQgrand">—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td></td>
+          </tr>
+          <tr class="sum">
+            <td class="left">Pertes de charges totales (grand débit cuisine)</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td id="sumPgrand">—</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+<script>
+/* === Coefficients GALVA fournis === */
+const GALVA = {
+  "80":  { lin:1.8, c30:1.2, c45:1.6, c90:2.8, t90:13.4 },
+  "125": { lin:3.1, c30:1.2, c45:1.6, c90:2.8, t90:13.4 },
+  "160": { lin:1.3, c30:1.2, c45:1.6, c90:2.8, t90:13.4 }
+};
+function pSortie(type){ return type==="toiture" ? 15 : 11; } // toiture 15 Pa, façade 11 Pa
+
+/* ==== UI autres pièces ==== */
+const divAutres = document.getElementById('pieces_autres');
+document.getElementById('addPieceBtn').addEventListener('click', ()=>{
+  const item = document.createElement('div');
+  item.className = 'piece';
+  item.innerHTML = `
+    <strong>Pièce d'eau</strong>
+    <div class="grid-4" style="margin-top:8px">
+      <div><label>Nom</label><input name="nom" value="Salle de bain"></div>
+      <div><label>Débit (m³/h)</label><input name="q" type="number" value="30" min="0"></div>
+      <div><label>Diamètre branche</label><select name="d"><option value="80">80</option><option value="125">125</option></select></div>
+      <div><label>Longueur droite (m)</label><input name="len" type="number" value="5" min="0" step="0.1"></div>
+    </div>
+    <div class="grid-3" style="margin-top:8px">
+      <div><label>Coudes 30°</label><input name="c30" type="number" value="0" min="0" step="1"></div>
+      <div><label>Coudes 45°</label><input name="c45" type="number" value="0" min="0" step="1"></div>
+      <div><label>Coudes 90°</label><input name="c90" type="number" value="1" min="0" step="1"></div>
+    </div>`;
+  divAutres.appendChild(item);
+});
+
+/* ==== Helpers ==== */
+function toNum(x){ return Number(x||0); }
+function calcBranchPdc(diam, len, c30, c45, c90, tCount=0){
+  const k = GALVA[String(diam)];
+  return k.lin*len + k.c30*c30 + k.c45*c45 + k.c90*c90 + k.t90*tCount;
+}
+
+/* ==== Génération du rapport ==== */
+document.getElementById('date_etude').valueAsDate = new Date();
+document.getElementById('genBtn').addEventListener('click', ()=>{
+  // Admin
+  const inst = document.getElementById('inst_nom').value || '—';
+  const siret= document.getElementById('inst_siret').value || '—';
+  const mailI= document.getElementById('inst_email').value || '—';
+  const dStudy = document.getElementById('date_etude').value
+               ? new Date(document.getElementById('date_etude').value).toLocaleDateString('fr-FR')
+               : new Date().toLocaleDateString('fr-FR');
+  const cli  = document.getElementById('client_nom').value || '—';
+  const mailC= document.getElementById('client_email').value || '—';
+  const addr = document.getElementById('client_adresse').value || '—';
+
+  // Principal extraction
+  const extr_d = toNum(document.getElementById('extr_diam').value);
+  const extr_l = toNum(document.getElementById('extr_len').value);
+  const extr_c30 = toNum(document.getElementById('extr_c30').value);
+  const extr_c45 = toNum(document.getElementById('extr_c45').value);
+  const extr_c90 = toNum(document.getElementById('extr_c90').value);
+  const extr_t   = toNum(document.getElementById('extr_t').value); // T = piquages
+
+  // Cuisine
+  const cui_q_min = toNum(document.getElementById('cui_q_min').value);
+  const cui_q_max = toNum(document.getElementById('cui_q_max').value);
+  const cui_d     = toNum(document.getElementById('cui_diam').value);
+  const cui_l     = toNum(document.getElementById('cui_len').value);
+  const cui_c30   = toNum(document.getElementById('cui_c30').value);
+  const cui_c45   = toNum(document.getElementById('cui_c45').value);
+  const cui_c90   = toNum(document.getElementById('cui_c90').value);
+
+  // Autres pièces
+  const autres = Array.from(divAutres.querySelectorAll('.piece')).map(node=>{
+    return {
+      nom: node.querySelector('input[name="nom"]').value || 'Pièce d’eau',
+      q:   toNum(node.querySelector('input[name="q"]').value),
+      d:   toNum(node.querySelector('select[name="d"]').value),
+      len: toNum(node.querySelector('input[name="len"]').value),
+      c30: toNum(node.querySelector('input[name="c30"]').value),
+      c45: toNum(node.querySelector('input[name="c45"]').value),
+      c90: toNum(node.querySelector('input[name="c90"]').value)
+    };
+  });
+
+  // Principal rejet + sortie
+  const rej_d = toNum(document.getElementById('rej_diam').value);
+  const rej_l = toNum(document.getElementById('rej_len').value);
+  const rej_c30 = toNum(document.getElementById('rej_c30').value);
+  const rej_c45 = toNum(document.getElementById('rej_c45').value);
+  const rej_c90 = toNum(document.getElementById('rej_c90').value);
+  const rej_sortie = document.getElementById('rej_sortie').value;
+
+  /* === Calculs === */
+  let rows = [];
+  let sumQmini = 0, sumQgrand = 0;
+  let sumPmini = 0, sumPgrand = 0;
+
+  // Cuisine
+  const pCui = calcBranchPdc(cui_d, cui_l, cui_c30, cui_c45, cui_c90, 0);
+  rows.push({
+    label:'Cuisine',
+    qMin:cui_q_min, pMin:pCui,
+    qMax:cui_q_max, pMax:pCui,
+    det:`Ø${cui_d} · ${GALVA[cui_d].lin} Pa/m × ${cui_l} m + 30°×${cui_c30} + 45°×${cui_c45} + 90°×${cui_c90}`
+  });
+  sumQmini += cui_q_min; sumQgrand += cui_q_max;
+  sumPmini += pCui;      sumPgrand += pCui;
+
+  // Autres pièces
+  autres.forEach(p=>{
+    const pdc = calcBranchPdc(p.d, p.len, p.c30, p.c45, p.c90, 0);
+    rows.push({
+      label: p.nom,
+      qMin: p.q, pMin: pdc,
+      qMax: '–', pMax: '–',
+      det: `Ø${p.d} · ${GALVA[p.d].lin} Pa/m × ${p.len} m + 30°×${p.c30} + 45°×${p.c45} + 90°×${p.c90}`
+    });
+    sumQmini += p.q; sumQgrand += p.q;
+    sumPmini += pdc; sumPgrand += pdc;
+  });
+
+  // Réseau principal extraction (inclut piquages en T)
+  const pExtr = calcBranchPdc(extr_d, extr_l, extr_c30, extr_c45, extr_c90, extr_t);
+  rows.push({
+    label:`Réseau principal extraction Ø${extr_d}`,
+    qMin: sumQmini, pMin: pExtr,
+    qMax: sumQgrand, pMax: pExtr,
+    det:`Ø${extr_d} · ${GALVA[extr_d].lin} Pa/m × ${extr_l} m + 30°×${extr_c30} + 45°×${extr_c45} + 90°×${extr_c90} + T×${extr_t}`
+  });
+  sumPmini += pExtr; sumPgrand += pExtr;
+
+  // Réseau principal rejet + sortie
+  const pRej = calcBranchPdc(rej_d, rej_l, rej_c30, rej_c45, rej_c90, 0);
+  const pOut = pSortie(rej_sortie);
+  const pRejTot = pRej + pOut;
+  rows.push({
+    label:`Réseau principal rejet Ø${rej_d}`,
+    qMin: sumQmini, pMin: pRejTot,
+    qMax: sumQgrand, pMax: pRejTot,
+    det:`Ø${rej_d} · ${GALVA[rej_d].lin} Pa/m × ${rej_l} m + 30°×${rej_c30} + 45°×${rej_c45} + 90°×${rej_c90} + Sortie ${rej_sortie}=${pOut} Pa`
+  });
+  sumPmini += pRejTot; sumPgrand += pRejTot;
+
+  /* === Sortie rapport === */
+  // Admin
+  document.getElementById('r-admin').innerHTML =
+    `<b>Installateur :</b> ${inst} (${siret}) — ${mailI}<br>
+     <b>Client :</b> ${cli} — ${addr} — ${mailC}<br>
+     <b>Date de l'étude :</b> ${dStudy}`;
+
+  // Lignes tableau
+  const tbody = document.getElementById('r-rows');
+  tbody.innerHTML = '';
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="left">${r.label}</td>
+      <td>${r.qMin}</td>
+      <td>${typeof r.pMin==='number' ? r.pMin.toFixed(2) : r.pMin}</td>
+      <td>${r.qMax}</td>
+      <td>${typeof r.pMax==='number' ? r.pMax.toFixed(2) : r.pMax}</td>
+      <td class="justif">Détails calcul : ${r.det}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Totaux
+  document.getElementById('sumQmini').textContent = sumQmini.toFixed(0);
+  document.getElementById('sumPmini').textContent = sumPmini.toFixed(2);
+  document.getElementById('sumQgrand').textContent = sumQgrand.toFixed(0);
+  document.getElementById('sumPgrand').textContent = sumPgrand.toFixed(2);
+
+  // Afficher rapport + masquer le H1 supérieur pour éviter le doublon visuel
+  document.getElementById('rapport').style.display = 'block';
+  document.body.classList.add('hide-title-on-report');
+  window.scrollTo({top: document.getElementById('rapport').offsetTop - 8, behavior:'smooth'});
+});
+</script>
+</body>
+</html>
