@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Note de calcul réseau Galva pour NIBE S735</title>
 <style>
-  :root{
-    --line:#e3e7ee; --text:#1f2630; --muted:#5b6676; --accent:#1b6bd6;
-    --fs-body:14px; --fs-small:12px; --fs-justif:11px;
-  }
+  :root{ --line:#e3e7ee; --text:#1f2630; --muted:#5b6676; --accent:#1b6bd6;
+         --fs-body:14px; --fs-small:12px; --fs-justif:11px; }
   *,*::before,*::after{box-sizing:border-box}
   html,body{margin:0;background:#fff;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:1100px;margin:22px auto;padding:18px}
@@ -45,12 +43,12 @@
   .calc{font-size:var(--fs-justif);color:var(--muted);text-align:left;line-height:1.25}
   .sum{font-weight:700;background:#fbfdff}
 
-  /* Tableau Entrées d’air compact sous le principal */
-  .airTable{width:60%; margin:4px 0 0 auto; font-size:12px}
+  /* Entrées d’air compact */
+  .airTable{width:70%; margin:4px 0 0 auto; font-size:12px}
   .airTable th,.airTable td{padding:6px}
   .airTable th{background:#f9fbff}
 
-  /* Compactage auto si beaucoup de lignes */
+  /* Compactage auto */
   #rapport.tight table{font-size:13px}
   #rapport.tight th,#rapport.tight td{padding:8px}
   #rapport.tight .calc{font-size:10.5px}
@@ -64,7 +62,7 @@
   #rapport.tight .rule{margin:8px 0 10px}
   #rapport.ultra .rule{margin:6px 0 8px}
 
-  /* Impression : imprimer UNIQUEMENT le rapport (#rapport) */
+  /* Impression : uniquement le rapport */
   @media print{
     @page{ size: A4 landscape; margin: 8mm }
     .no-print{ display:none !important }
@@ -85,25 +83,24 @@
   <form id="form" class="no-print">
     <fieldset>
       <legend>Données administratives</legend>
-      <div class="grid-2">
+      <div class="grid-3">
+        <div class="field"><label>Type de bâtiment</label>
+          <select id="bat_type">
+            <option value="maison">Maison individuelle</option>
+            <option value="collectif">Immeuble collectif</option>
+          </select>
+        </div>
         <div class="field"><label>Installateur (Nom / Société)</label><input id="inst_nom" required></div>
         <div class="field"><label>N° SIRET</label><input id="inst_siret"></div>
+
         <div class="field"><label>Email installateur</label><input id="inst_email" type="email" required></div>
         <div class="field"><label>Date de l'étude</label><input id="date_etude" type="date"></div>
-      </div>
-      <div class="grid-3" style="margin-top:10px">
-        <div class="field" style="grid-column:1/ span 2">
-          <label>Nom et prénom (qui a réalisé cette étude)</label>
-          <input id="audit_fullname" required placeholder="Ex : Marie Martin">
-        </div>
-        <div class="field">
-          <label>Marque bouches d’extraction</label>
-          <input id="brand_bouches" value="NIBE">
-        </div>
-      </div>
-      <div class="grid-2" style="margin-top:10px">
+        <div class="field"><label>Nom et prénom (qui a réalisé cette étude)</label><input id="audit_fullname" required placeholder="Ex : Marie Martin"></div>
+
         <div class="field"><label>Email client final</label><input id="client_email" type="email"></div>
+        <div class="field"><label>Marque bouches d’extraction</label><input id="brand_bouches" value="NIBE"></div>
         <div class="field"><label>Marque entrées d’air</label><input id="brand_entrees" value="NIBE"></div>
+
         <div class="field" style="grid-column:1/-1"><label>Adresse chantier</label><input id="client_adresse"></div>
       </div>
     </fieldset>
@@ -199,7 +196,7 @@
     </div>
   </form>
 
-  <!-- === RAPPORT FINAL (seul bloc imprimé) === -->
+  <!-- === RAPPORT FINAL === -->
   <div id="rapport">
     <div class="header-bar">
       <button type="button" class="secondary printBtn" id="printBtn">Imprimer le rapport</button>
@@ -223,7 +220,10 @@
 
     <table class="airTable" id="tabAir">
       <thead>
-        <tr><th class="left">Entrées d’air</th><th>Débit (m³/h)</th></tr>
+        <tr>
+          <th class="left">Entrées d’air</th>
+          <th>Débit (m³/h)</th>
+        </tr>
       </thead>
       <tbody id="r-air"></tbody>
     </table>
@@ -232,12 +232,13 @@
 
 <script>
 /* ===== Pertes GALVA ===== */
-const LIN = { 80:1.8, 125:3.1, 160:1.3 };               // Pa/m
-const C30 = 1.2, C45 = 1.6, C90 = 2.8;                  // Pa / coude (80/125/160)
-const T90 = 13.4;                                       // Pa / té (sur le principal)
-const SORTIE = { facade:11, toiture:15 };               // Pa fixes
+const LIN = { 80:1.8, 125:3.1, 160:1.3 }; // Pa/m
+const C30 = 1.2, C45 = 1.6, C90 = 2.8;    // Pa/coude
+const T90 = 13.4;                         // Pa/ té (principal)
+const SORTIE = { facade:11, toiture:15 }; // Pa fixes
 
 /* ===== Utils ===== */
+const $ = sel => document.querySelector(sel);
 function n(x){ return Number(x||0); }
 function cuisineDefaults(nb){
   nb=Number(nb);
@@ -246,43 +247,68 @@ function cuisineDefaults(nb){
   if (nb===3) return {mini:45, grand:120};
   return {mini:45, grand:135};
 }
+function titreLogement(nb){
+  if (nb<=1) return 'T2';
+  if (nb===2) return 'T3';
+  if (nb===3) return 'T4';
+  if (nb===4) return 'T5';
+  if (nb===5) return 'T6';
+  return (nb>=7)?'T7+':'T7';
+}
+function debitFuite(type, nbCh){
+  const T = titreLogement(nbCh);
+  const valMaison = {T2:45,T3:60,T4:75,T5:90,T6:105,'T7':120,'T7+':120};
+  const valColl   = {T2:30,T3:40,T4:50,T5:60,T6:70,'T7':80,'T7+':80};
+  return (type==='maison' ? (valMaison[T]??0) : (valColl[T]??0));
+}
 
 /* ===== Pièces principales supplémentaires ===== */
-const ppListEl = document.getElementById('pp_list');
-const ppInput  = document.getElementById('pp_input');
-document.getElementById('pp_add').addEventListener('click', ()=>{
-  const name = (ppInput.value||'').trim();
-  if(!name) return;
-  addPP(name);
-  ppInput.value='';
-});
-function addPP(name){
+const ppListEl = $('#pp_list'), ppInput = $('#pp_input');
+$('#pp_add').addEventListener('click', ()=>{
+  const name = (ppInput.value||'').trim(); if(!name) return;
   const row = document.createElement('div');
-  row.className='row';
-  row.style.marginTop='6px';
-  row.innerHTML = `
-    <input class="pp_name" value="${name.replace(/"/g,'&quot;')}" style="flex:1">
-    <button type="button" class="ghost pp_remove">Supprimer</button>`;
+  row.className='row'; row.style.marginTop='6px';
+  row.innerHTML = `<input class="pp_name" value="${name.replace(/"/g,'&quot;')}" style="flex:1">
+                   <button type="button" class="ghost pp_remove">Supprimer</button>`;
   row.querySelector('.pp_remove').addEventListener('click', ()=> row.remove());
   ppListEl.appendChild(row);
-}
+  ppInput.value='';
+});
 function getPPNames(){
   return Array.from(document.querySelectorAll('#pp_list .pp_name')).map(i=>i.value.trim()).filter(Boolean);
 }
 
-/* ===== Entrées d’air = chambres + PP + séjour ===== */
-function entreesAir(nbCh, ppNames){
-  nbCh=Number(nbCh);
+/* ===== Entrées d’air ===== */
+function baseEntreesAir(nbCh, ppNames){
   const list=[];
   const qStd = (nbCh>=5) ? 22 : 30; // T6/T7+ => 22 ; sinon 30
-  for(let i=1;i<=nbCh;i++) list.push({lib:`Chambre ${i}`, q:qStd});
-  ppNames.forEach(name=> list.push({lib:name, q:qStd}));
-  list.push({lib:'Séjour', q:(nbCh<=2?60:45)});
+  for(let i=1;i<=nbCh;i++) list.push({lib:`Chambre ${i}`, q:qStd, type:'ch'});
+  ppNames.forEach(name=> list.push({lib:name, q:qStd, type:'pp'}));
+  list.push({lib:'Séjour', q:(nbCh<=2?60:45), type:'sej'});
   return list;
+}
+function ajusterEntreesAir(liste, besoinMini){
+  let note='', modif=false;
+  const sum = () => liste.reduce((s,a)=>s+a.q,0);
+  if (sum() < besoinMini){
+    // 1) chambres/PP 22 -> 30
+    let changed=false;
+    liste.forEach(a=>{
+      if ((a.type==='ch' || a.type==='pp') && a.q===22){ a.q=30; changed=true; }
+    });
+    if (changed){ note += 'Chambres/PP ajustées à 30 m³/h. '; modif=true; }
+  }
+  if (sum() < besoinMini){
+    // 2) séjour -> 90
+    const sej = liste.find(a=>a.type==='sej');
+    if (sej && sej.q<90){ sej.q=90; note += 'Séjour ajusté à 2×45=90 m³/h. '; modif=true; }
+  }
+  const insuff = sum() < besoinMini;
+  return {liste, note: note.trim(), insuffisant: insuff, modif};
 }
 
 /* ===== UI Pièces d’eau (autres) ===== */
-document.getElementById('addPieceBtn').addEventListener('click', ()=>{
+$('#addPieceBtn').addEventListener('click', ()=>{
   const box=document.createElement('div'); box.className='piece';
   box.innerHTML=`
     <strong>Pièce d'eau</strong>
@@ -335,44 +361,37 @@ document.getElementById('printBtn').addEventListener('click', ()=> window.print(
 
 /* ===== Génération du rapport ===== */
 document.getElementById('genBtn').addEventListener('click', ()=>{
-  checkVelocityWarnings();
-
   // Admin
-  const inst =document.getElementById('inst_nom').value||'—';
-  const siret=document.getElementById('inst_siret').value||'—';
-  const mailI=document.getElementById('inst_email').value||'—';
-  const date =document.getElementById('date_etude').value
-               ? new Date(document.getElementById('date_etude').value).toLocaleDateString('fr-FR')
-               : new Date().toLocaleDateString('fr-FR');
-  const audit=document.getElementById('audit_fullname').value||'—';
-  const bB   =document.getElementById('brand_bouches').value||'—';
-  const bE   =document.getElementById('brand_entrees').value||'—';
-  const mailC=document.getElementById('client_email').value||'—';
-  const addr =document.getElementById('client_adresse').value||'—';
+  const batType = $('#bat_type').value; // maison | collectif
+  const inst =$('#inst_nom').value||'—';
+  const siret=$('#inst_siret').value||'—';
+  const mailI=$('#inst_email').value||'—';
+  const date =$('#date_etude').value ? new Date($('#date_etude').value).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR');
+  const audit=$('#audit_fullname').value||'—';
+  const bB   =$('#brand_bouches').value||'—';
+  const bE   =$('#brand_entrees').value||'—';
+  const mailC=$('#client_email').value||'—';
+  const addr =$('#client_adresse').value||'—';
 
   // Type logement
-  const nbCh = Number(document.getElementById('nb_chambres').value);
+  const nbCh = Number($('#nb_chambres').value);
   const ppNames = getPPNames();
 
-  // Entrées d’air (rapport)
-  const airList=entreesAir(nbCh, ppNames);
-  const sumAir=airList.reduce((s,a)=>s+a.q,0);
-
   // Conduit principal — aspiration
-  const main_d =n(document.getElementById('main_diam').value);
-  const main_l =n(document.getElementById('main_len').value);
-  const main_c30=n(document.getElementById('main_c30').value);
-  const main_c45=n(document.getElementById('main_c45').value);
-  const main_c90=n(document.getElementById('main_c90').value);
+  const main_d =n($('#main_diam').value);
+  const main_l =n($('#main_len').value);
+  const main_c30=n($('#main_c30').value);
+  const main_c45=n($('#main_c45').value);
+  const main_c90=n($('#main_c90').value);
 
   // Cuisine
-  const cui_q_min=n(document.getElementById('cui_q_min').value);
-  const cui_q_max=n(document.getElementById('cui_q_max').value);
-  const cui_d=n(document.getElementById('cui_diam').value);
-  const cui_len=n(document.getElementById('cui_len').value);
-  const cui_c30=n(document.getElementById('cui_c30').value);
-  const cui_c45=n(document.getElementById('cui_c45').value);
-  const cui_c90=n(document.getElementById('cui_c90').value);
+  const cui_q_min=n($('#cui_q_min').value);
+  const cui_q_max=n($('#cui_q_max').value);
+  const cui_d=n($('#cui_diam').value);
+  const cui_len=n($('#cui_len').value);
+  const cui_c30=n($('#cui_c30').value);
+  const cui_c45=n($('#cui_c45').value);
+  const cui_c90=n($('#cui_c90').value);
 
   // Autres pièces d’eau
   const autres=Array.from(document.querySelectorAll('#pieces_autres .piece')).map(node=>({
@@ -386,20 +405,19 @@ document.getElementById('genBtn').addEventListener('click', ()=>{
   }));
 
   // Rejet & sortie
-  const rej_d =n(document.getElementById('rej_diam').value);
-  const rej_l =n(document.getElementById('rej_len').value);
-  const rej_c30=n(document.getElementById('rej_c30').value);
-  const rej_c45=n(document.getElementById('rej_c45').value);
-  const rej_c90=n(document.getElementById('rej_c90').value);
-  const rej_sortie=document.getElementById('rej_sortie').value;
+  const rej_d =n($('#rej_diam').value);
+  const rej_l =n($('#rej_len').value);
+  const rej_c30=n($('#rej_c30').value);
+  const rej_c45=n($('#rej_c45').value);
+  const rej_c90=n($('#rej_c90').value);
+  const rej_sortie=$('#rej_sortie').value;
 
-  /* === Débits totaux (mini / grand) — somme des débits déclarés === */
+  /* === Débits totaux === */
   let sumQmini=cui_q_min, sumQgrand=cui_q_max;
   autres.forEach(p=>{ sumQmini+=p.q; sumQgrand+=p.q; });
 
-  /* === Pertes pièces d’eau (GALVA, linéaire) === */
+  /* === Pertes pièces d’eau (GALVA) === */
   let rows=[], sumP=0;
-
   function pdcGalva(diam, len, c30, c45, c90){
     const per_m = LIN[diam] || 0;
     return per_m*len + C30*c30 + C45*c45 + C90*c90;
@@ -433,17 +451,25 @@ document.getElementById('genBtn').addEventListener('click', ()=>{
     det:`Lin: ${(LIN[rej_d]||0).toFixed(2)} Pa/m × ${rej_l} m ; Coudes 30°:${rej_c30} ; 45°:${rej_c45} ; 90°:${rej_c90} ; Sortie: ${(SORTIE[rej_sortie]||0).toFixed(1)} Pa`});
   sumP+=pRej;
 
+  /* === ENTRÉES D’AIR : calcul + ajustements === */
+  let airList = baseEntreesAir(nbCh, ppNames);
+  const fuite = debitFuite(batType, nbCh);
+  const besoinMini = sumQgrand - fuite; // seuil
+  const aj = ajusterEntreesAir(airList, besoinMini);
+  airList = aj.liste;
+  const sumAir = airList.reduce((s,a)=>s+a.q,0);
+
   /* === En-têtes rapport === */
-  document.getElementById('r-head-1').innerHTML =
+  $('#r-head-1').innerHTML =
     `<div><b>Installateur :</b> ${inst} (${siret}) — ${mailI}</div>
      <div><b>Étude réalisée par :</b> ${audit}</div>`;
-  document.getElementById('r-head-2').innerHTML =
-    `<div><b>Client :</b> ${addr} — ${mailC}</div>
+  // Type de bâtiment déplacé à gauche SOUS le client
+  $('#r-head-2').innerHTML =
+    `<div><b>Client :</b> ${addr} — ${mailC}<br><b>Type de bâtiment :</b> ${batType==='maison'?'Maison individuelle':'Immeuble collectif'}</div>
      <div><b>Date :</b> ${date} — <b>Marques :</b> Bouches=${bB||'—'} ; Entrées d’air=${bE}</div>`;
 
   /* === Remplir tableau principal === */
-  const tbody=document.getElementById('r-rows');
-  tbody.innerHTML='';
+  const tbody=document.getElementById('r-rows'); tbody.innerHTML='';
   rows.forEach(r=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`
@@ -455,7 +481,7 @@ document.getElementById('genBtn').addEventListener('click', ()=>{
     tbody.appendChild(tr);
   });
 
-  /* === Total (fin de tbody) — une seule colonne PDC === */
+  /* === Total (fin de tbody) === */
   const trTot = document.createElement('tr');
   trTot.className = 'sum';
   trTot.innerHTML = `
@@ -463,28 +489,44 @@ document.getElementById('genBtn').addEventListener('click', ()=>{
     <td>${sumQmini.toFixed(0)}</td>
     <td>${sumQgrand.toFixed(0)}</td>
     <td>${sumP.toFixed(2)}</td>
-    <td></td>`;
+    <td>${aj.modif ? `<span class="calc">Ajustements auto : ${aj.note}</span>` : ''}</td>`;
   tbody.appendChild(trTot);
 
   /* === Entrées d’air === */
   const airBody=document.getElementById('r-air'); 
   airBody.innerHTML='';
-  const airelems = entreesAir(nbCh, ppNames);
-  airelems.forEach(a=>{
-    const tr=document.createElement('tr'); tr.innerHTML=`<td class="left">${a.lib}</td><td>${a.q}</td>`;
+  airList.forEach(a=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="left">${a.lib}</td><td>${a.q}</td>`;
     airBody.appendChild(tr);
   });
+  // Total
   const trAirTot=document.createElement('tr');
   trAirTot.className='sum';
-  trAirTot.innerHTML=`<td class="left">Total entrées d’air</td><td>${airelems.reduce((s,a)=>s+a.q,0).toFixed(0)}</td>`;
+  trAirTot.innerHTML=`<td class="left">Total entrées d’air</td><td>${sumAir.toFixed(0)}</td>`;
   airBody.appendChild(trAirTot);
+  // Débit de fuite (nouvelle ligne sous le total)
+  const trFuite=document.createElement('tr');
+  trFuite.innerHTML=`<td class="left"><span class="calc"><b>Débit de fuite</b> (m³/h)</span></td><td>${fuite.toFixed(0)}</td>`;
+  airBody.appendChild(trFuite);
+
+  // Alerte si insuffisant malgré ajustements
+  const oldWarn = document.getElementById('warn-air');
+  if (oldWarn) oldWarn.remove();
+  if (sumAir < besoinMini){
+    const warn = document.createElement('div');
+    warn.id = 'warn-air';
+    warn.style.cssText = 'margin-top:6px;color:#b40000;font-weight:700';
+    warn.textContent = '⚠️ Les entrées d’air restent insuffisantes (Grand débit cuisine − Débit de fuite). Augmentez manuellement.';
+    document.getElementById('rapport').appendChild(warn);
+  }
 
   /* === Compactage auto (pour tenir sur 1 page) === */
   const r = document.getElementById('rapport');
   r.classList.remove('tight','ultra');
   const linesMain = rows.length + 1; // + total
-  const linesAir  = airelems.length + 1; // + total
-  const totalLines = linesMain + Math.ceil(linesAir*0.7); // airTable plus petite
+  const linesAir  = airList.length + 2; // + total + fuite
+  const totalLines = linesMain + Math.ceil(linesAir*0.7);
   if (totalLines > 24 && totalLines <= 32) r.classList.add('tight');
   if (totalLines > 32) r.classList.add('ultra');
 
