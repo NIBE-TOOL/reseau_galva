@@ -7,8 +7,7 @@
 <style>
   :root{
     --line:#e3e7ee; --text:#1f2630; --muted:#5b6676; --accent:#1b6bd6;
-    --ok:#10b981; --warn:#f59e0b; --zebra:#f7f9fc;
-    --fs-body:14px; --fs-small:12px; --fs-justif:11px;
+    --zebra:#f7f9fc; --fs-body:14px; --fs-small:12px; --fs-justif:11px;
   }
   *,*::before,*::after{box-sizing:border-box}
   html,body{margin:0;background:#fff;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -16,11 +15,13 @@
   .wrap{max-width:1100px;margin:22px auto;padding:18px}
   h1{font-size:24px;text-transform:uppercase;text-align:center;margin-bottom:16px}
 
+  /* Progress */
   .progress{display:flex;gap:8px;margin:12px 0 18px}
   .step{flex:1;height:6px;background:#eff3f9;border-radius:999px;position:relative;overflow:hidden}
   .step > span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7aa9ff);transition:width .3s ease}
   .labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:-6px}
 
+  /* Cards / Steps */
   .card{border:1px solid var(--line);border-radius:12px;padding:16px;background:#fff;margin-bottom:12px}
   .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -39,8 +40,10 @@
   .nav{display:flex;justify-content:space-between;margin-top:10px}
   .error{color:#b00020;font-size:12px;margin-top:6px}
 
+  /* Zebra pour lisibilité */
   .zebra .piece:nth-of-type(even){ background:var(--zebra) }
 
+  /* Rapport */
   #rapport{display:none;margin-top:18px;border:1px solid var(--line);border-radius:12px;padding:18px;background:#fff}
   .header{display:grid;grid-template-columns:1fr 1fr;gap:10px;color:var(--muted);font-size:var(--fs-small)}
   .header b{color:var(--text)}
@@ -54,18 +57,21 @@
   .calc{font-size:var(--fs-justif);color:var(--muted);text-align:left;line-height:1.2}
   .sum{font-weight:700;background:#fbfdff}
 
+  /* Colonnes (PDC unique) */
   #tabMain col.col-elt{width:34%}
   #tabMain col.col-qmin{width:16%}
   #tabMain col.col-qmax{width:16%}
   #tabMain col.col-pdc{width:12%}
   #tabMain col.col-det{width:22%}
 
+  /* Entrées d’air compact, à droite */
   .airTable{width:60%; margin:4px 0 0 auto; font-size:12px}
   .airTable th,.airTable td{padding:6px}
   .airTable th{background:#f9fbff}
 
   .footnote{font-size:11px;color:var(--muted);margin-top:8px}
 
+  /* Compaction auto pour tenir sur 1 page */
   #rapport.tight table{font-size:13px}
   #rapport.tight th,#rapport.tight td{padding:6px}
   #rapport.tight .calc{font-size:10.5px}
@@ -75,6 +81,7 @@
   #rapport.tight .header{font-size:11px}
   #rapport.ultra .header{font-size:10px}
 
+  /* Impression : uniquement le rapport */
   @media print{
     @page{ size: A4 landscape; margin: 8mm }
     .no-print{ display:none !important }
@@ -90,6 +97,7 @@
 <div class="wrap no-print">
   <h1>Note de calcul réseau Galva pour NIBE S735</h1>
 
+  <!-- Progress -->
   <div class="progress" aria-hidden="true">
     <div class="step"><span id="p1" style="width:0%"></span></div>
     <div class="step"><span id="p2" style="width:0%"></span></div>
@@ -101,7 +109,7 @@
     <span>Admin</span><span>Logement</span><span>Aspiration</span><span>Pièces d’eau</span><span>Rejet</span>
   </div>
 
-  <!-- STEP 1 -->
+  <!-- STEP 1: Admin -->
   <div class="card" data-step="1">
     <h3>1) Données administratives</h3>
     <div class="grid-3">
@@ -127,18 +135,18 @@
     <div class="nav">
       <span></span>
       <div class="actions">
-        <button id="next1" type="button">Continuer</button>
+        <button type="button" onclick="showStep(2)">Continuer</button>
       </div>
     </div>
   </div>
 
-  <!-- STEP 2 -->
+  <!-- STEP 2: Logement -->
   <div class="card" data-step="2" style="display:none">
     <h3>2) Type de logement</h3>
     <div class="grid-2">
       <div class="field" style="max-width:340px">
         <label>Nombre de chambres</label>
-        <select id="nb_chambres">
+        <select id="nb_chambres" onchange="onChambresChange()">
           <option value="1">1 chambre (T2)</option>
           <option value="2">2 chambres (T3)</option>
           <option value="3" selected>3 chambres (T4)</option>
@@ -152,20 +160,20 @@
         <label>Pièces principales supplémentaires</label>
         <div id="pp_list"></div>
         <div class="actions" style="margin:6px 0 0 0">
-          <button type="button" id="pp_add" class="ghost">+ Ajouter une pièce principale</button>
+          <button type="button" class="ghost" onclick="ppAdd()">+ Ajouter une pièce principale</button>
         </div>
         <div class="hint">(bureau, salle de jeux, bibliothèque…)</div>
       </div>
     </div>
     <div class="nav">
-      <button class="secondary" id="back2" type="button">Retour</button>
+      <button class="secondary" type="button" onclick="showStep(1)">Retour</button>
       <div class="actions">
-        <button id="next2" type="button">Continuer</button>
+        <button type="button" onclick="applyCuisineDefaults();applyPieceRules();showStep(3)">Continuer</button>
       </div>
     </div>
   </div>
 
-  <!-- STEP 3 -->
+  <!-- STEP 3: Conduit principal (Aspiration) -->
   <div class="card" data-step="3" style="display:none">
     <h3>3) Conduit principal — Aspiration PAC</h3>
     <div class="grid-4">
@@ -177,17 +185,18 @@
     </div>
     <div class="hint">Nombre de <b>piquages (T)</b> calculé automatiquement = nombre de pièces d’eau.</div>
     <div class="nav">
-      <button class="secondary" id="back3" type="button">Retour</button>
+      <button class="secondary" type="button" onclick="showStep(2)">Retour</button>
       <div class="actions">
-        <button id="next3" type="button">Continuer</button>
+        <button type="button" onclick="showStep(4)">Continuer</button>
       </div>
     </div>
   </div>
 
-  <!-- STEP 4 -->
+  <!-- STEP 4: Pièces d’eau -->
   <div class="card zebra" data-step="4" style="display:none">
     <h3>4) Pièces d’eau (branches GALVA)</h3>
 
+    <!-- Cuisine -->
     <div class="piece" id="piece_cuisine">
       <strong>CUISINE</strong>
       <div class="grid-4" style="margin-top:8px">
@@ -204,21 +213,22 @@
       </div>
     </div>
 
+    <!-- Autres pièces -->
     <div id="pieces_autres"></div>
     <div class="actions" style="margin-top:10px">
-      <button type="button" class="secondary" id="addPieceBtn">+ Ajouter une pièce d'eau</button>
+      <button type="button" class="secondary" onclick="addPiece()">+ Ajouter une pièce d'eau</button>
     </div>
     <div class="hint">Débits imposés : SDB=T2→15 sinon 30 ; WC=T2/T3→15 ; T4+→30 si 1 WC, sinon 15 chacun ; Buanderie/Autre=15.</div>
 
     <div class="nav">
-      <button class="secondary" id="back4" type="button">Retour</button>
+      <button class="secondary" type="button" onclick="showStep(3)">Retour</button>
       <div class="actions">
-        <button id="next4" type="button">Continuer</button>
+        <button type="button" onclick="showStep(5)">Continuer</button>
       </div>
     </div>
   </div>
 
-  <!-- STEP 5 -->
+  <!-- STEP 5: Rejet -->
   <div class="card" data-step="5" style="display:none">
     <h3>5) Conduit de rejet & sortie</h3>
     <div class="grid-4">
@@ -236,19 +246,19 @@
       </div>
     </div>
     <div class="nav">
-      <button class="secondary" id="back5" type="button">Retour</button>
+      <button class="secondary" type="button" onclick="showStep(4)">Retour</button>
       <div class="actions">
-        <button id="genBtn" type="button">Générer le rapport</button>
+        <button id="genBtn" type="button" onclick="generateReport()">Générer le rapport</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- RAPPORT -->
+<!-- ===== RAPPORT FINAL ===== -->
 <div class="wrap" id="rapport" style="display:none">
   <div class="header-bar">
     <h2 style="margin:0">Note de calcul réseau Galva pour NIBE S735</h2>
-    <button type="button" class="secondary printBtn no-print" id="printBtn">Imprimer le rapport</button>
+    <button type="button" class="secondary printBtn no-print" onclick="window.print()">Imprimer le rapport</button>
   </div>
   <div class="header" id="r-head-1"></div>
   <div class="header" id="r-head-2" style="margin-top:6px"></div>
@@ -281,14 +291,20 @@
 </div>
 
 <script>
-const GALVA_PER_M = { 80:1.8, 125:3.1, 160:1.3 };
-const GALVA_C30 = 1.2, GALVA_C45 = 1.6, GALVA_C90 = 2.8;
-const GALVA_T = 13.4;
+/* ====== Constantes PDC GALVA ====== */
+const GALVA_PER_M = { 80:1.8, 125:3.1, 160:1.3 };   // Pa/m
+const GALVA_C30 = 1.2, GALVA_C45 = 1.6, GALVA_C90 = 2.8; // Pa/coude (tous diam)
+const GALVA_T   = 13.4;                              // Pa/T (piquage)
 const SORTIE_PA = { facade:11, toiture:15 };
 
+/* ====== Helpers ====== */
 const $ = s=>document.querySelector(s);
 const $$ = s=>Array.from(document.querySelectorAll(s));
 
+function showStep(n){
+  $$('.card').forEach(c=> c.style.display = (Number(c.dataset.step)===n ? '' : 'none'));
+  for(let i=1;i<=5;i++){ const el=$('#p'+i); if(el) el.style.width = (i<=n ? '100%' : '0%'); }
+}
 function titreLogement(nb){
   nb=Number(nb);
   if (nb<=1) return 'T2'; if (nb===2) return 'T3'; if (nb===3) return 'T4';
@@ -296,10 +312,10 @@ function titreLogement(nb){
 }
 function cuisineDefaults(nb){
   nb=Number(nb);
-  if (nb<=1) return {mini:30, grand:90};
-  if (nb===2) return {mini:45, grand:105};
-  if (nb===3) return {mini:45, grand:120};
-  return {mini:45, grand:135};
+  if (nb<=1) return {mini:30, grand:90};     // T2
+  if (nb===2) return {mini:45, grand:105};   // T3
+  if (nb===3) return {mini:45, grand:120};   // T4
+  return {mini:45, grand:135};               // T5/T6/T7+
 }
 function debitFuite(type, nbCh){
   const T=titreLogement(nbCh);
@@ -308,6 +324,7 @@ function debitFuite(type, nbCh){
   return type==='maison'?(maison[T]??0):(coll[T]??0);
 }
 
+/* ====== Pièces principales (entrées d’air) ====== */
 const ppListEl = $('#pp_list');
 function makePPRow(name='Pièce principale'){
   const row=document.createElement('div');
@@ -317,13 +334,15 @@ function makePPRow(name='Pièce principale'){
   row.querySelector('.pp_remove').addEventListener('click', ()=> row.remove());
   return row;
 }
-$('#pp_add')?.addEventListener('click', ()=> ppListEl.appendChild(makePPRow('Bureau')) );
+function ppAdd(){ ppListEl.appendChild(makePPRow('Bureau')); }
 function getPPNames(){
   return Array.from(document.querySelectorAll('#pp_list .pp_name')).map(i=>i.value.trim()).filter(Boolean);
 }
+
+/* ====== Entrées d’air ====== */
 function baseEntreesAir(nbCh, ppNames){
   const list=[];
-  const qStd = (nbCh>=5) ? 22 : 30;
+  const qStd = (nbCh>=5) ? 22 : 30; // T6/T7+ => 22 ; sinon 30
   for(let i=1;i<=nbCh;i++) list.push({lib:`Chambre ${i}`, q:qStd, type:'ch'});
   ppNames.forEach(name=> list.push({lib:name, q:qStd, type:'pp'}));
   list.push({lib:'Séjour', q:(nbCh<=2?60:45), type:'sej'});
@@ -346,13 +365,14 @@ function ajusterEntreesAir(liste, besoinMini){
   return {liste, note: note.trim(), insuffisant: (liste.reduce((s,a)=>s+a.q,0) < besoinMini), modif};
 }
 
+/* ====== UI Pièces d’eau (débits imposés) ====== */
 function makePieceRow(defaultType='sdb'){
   const box=document.createElement('div'); box.className='piece';
   box.innerHTML=`
     <div class="grid-4">
       <div class="field"><label>Nom</label><input name="nom" value="${defaultType==='wc'?'WC':(defaultType==='autre'?'Buanderie':'Salle de bain')}"></div>
       <div class="field"><label>Type</label>
-        <select name="type">
+        <select name="type" onchange="applyPieceRules()">
           <option value="sdb"${defaultType==='sdb'?' selected':''}>Douche / Salle de bain</option>
           <option value="wc"${defaultType==='wc'?' selected':''}>WC</option>
           <option value="autre"${defaultType==='autre'?' selected':''}>Buanderie / Cellier / Autre</option>
@@ -363,34 +383,33 @@ function makePieceRow(defaultType='sdb'){
     </div>
     <div class="grid-3" style="margin-top:8px">
       <div class="field"><label>Diamètre (mm)</label>
-        <select name="diam"><option>125</option><option>80</option></select></div>
+        <select name="diam" onchange="applyPieceRules()"><option>125</option><option>80</option></select></div>
       <div class="field"><label>Coudes 45°</label><input name="c45" type="number" value="0" min="0"></div>
       <div class="field"><label>Coudes 90°</label><input name="c90" type="number" value="1" min="0"></div>
     </div>
-    <div class="actions" style="margin-top:8px"><button type="button" class="ghost btnDel">Supprimer</button></div>
+    <div class="actions" style="margin-top:8px"><button type="button" class="ghost" onclick="this.closest('.piece').remove();applyPieceRules()">Supprimer</button></div>
     <div class="error" style="display:none"></div>
   `;
-  box.querySelector('.btnDel').addEventListener('click', ()=>{ box.remove(); applyPieceRules(); });
-  box.querySelector('select[name="type"]').addEventListener('change', ()=> applyPieceRules());
-  box.querySelector('select[name="diam"]').addEventListener('change', ()=> applyPieceRules());
   return box;
 }
-$('#addPieceBtn')?.addEventListener('click', ()=> { $('#pieces_autres').appendChild(makePieceRow('sdb')); applyPieceRules(); });
+function addPiece(){ $('#pieces_autres').appendChild(makePieceRow('sdb')); applyPieceRules(); }
 
-const elNbCh = $('#nb_chambres');
+/* ====== Cuisine par défaut selon logement (lecture seule & Ø125 imposé) ====== */
+function onChambresChange(){ applyCuisineDefaults(); applyPieceRules(); }
 function applyCuisineDefaults(){
-  if (!elNbCh) return;
-  const d=cuisineDefaults(elNbCh.value);
+  const nb = Number($('#nb_chambres')?.value || 3);
+  const d=cuisineDefaults(nb);
   $('#cui_q_min').value=d.mini;
   $('#cui_q_max').value=d.grand;
 }
-elNbCh?.addEventListener('change', ()=>{ applyCuisineDefaults(); applyPieceRules(); });
 
+/* Règles débits imposés pour pièces d’eau + vitesse d’air */
 function applyPieceRules(){
   const nbCh = Number($('#nb_chambres')?.value || 3);
   const T = titreLogement(nbCh);
   const pieces = $$('#pieces_autres .piece');
 
+  // 1) Débits par type
   pieces.forEach(p=>{
     const type = p.querySelector('select[name="type"]').value;
     const qEl = p.querySelector('input[name="q"]');
@@ -398,6 +417,7 @@ function applyPieceRules(){
     else if (type==='autre'){ qEl.value = 15; }
   });
 
+  // 2) WC rules
   const wcs = pieces.filter(p=> p.querySelector('select[name="type"]').value==='wc');
   if (T==='T2' || T==='T3'){
     wcs.forEach(p=> p.querySelector('input[name="q"]').value = 15);
@@ -406,6 +426,7 @@ function applyPieceRules(){
     else wcs.forEach(p=> p.querySelector('input[name="q"]').value = 15);
   }
 
+  // 3) Cas T2 : mini global 60 — si <60, forcer UNE SDB à 30
   let sumMini = Number($('#cui_q_min')?.value||0);
   pieces.forEach(p=> sumMini += Number(p.querySelector('input[name="q"]').value)||0);
   if (T==='T2' && sumMini < 60){
@@ -413,6 +434,7 @@ function applyPieceRules(){
     if (sdb){ sdb.querySelector('input[name="q"]').value = 30; }
   }
 
+  // 4) Vitesse d’air : si q≥45 et Ø80 → forcer Ø125 (et message)
   const errMsg = 'Diamètre 80 interdit pour 45 m³/h : vitesse d’air trop élevée → passage en 125 mm.';
   pieces.forEach(p=>{
     const q = Number(p.querySelector('input[name="q"]').value);
@@ -425,6 +447,7 @@ function applyPieceRules(){
   });
 }
 
+/* ====== Calcul PDC ====== */
 function pdcBranchGalva(diam, len, c30, c45, c90){
   const pm = GALVA_PER_M[diam]||0;
   return { p: pm*len + GALVA_C30*(c30||0) + GALVA_C45*(c45||0) + GALVA_C90*(c90||0), pm };
@@ -439,42 +462,34 @@ function pdcRejetGalva(diam, len, c45, c90, sortie){
   return { p: pm*len + GALVA_C45*(c45||0) + GALVA_C90*(c90||0) + pSortie, pm, pSortie };
 }
 
-/* Wizard nav (type="button" partout) */
-function showStep(n){
-  $$('.card').forEach(c=> c.style.display = (Number(c.dataset.step)===n ? '' : 'none'));
-  for(let i=1;i<=5;i++){ $('#p'+i).style.width = (i<=n ? '100%' : '0%'); }
-}
-$('#next1')?.addEventListener('click', ()=> showStep(2));
-$('#back2')?.addEventListener('click', ()=> showStep(1));
-$('#next2')?.addEventListener('click', ()=>{ applyCuisineDefaults(); applyPieceRules(); showStep(3); });
-$('#back3')?.addEventListener('click', ()=> showStep(2));
-$('#next3')?.addEventListener('click', ()=> showStep(4));
-$('#back4')?.addEventListener('click', ()=> showStep(3));
-$('#next4')?.addEventListener('click', ()=> showStep(5));
-
-$('#printBtn')?.addEventListener('click', ()=> window.print() );
-
-$('#genBtn')?.addEventListener('click', ()=>{
+/* ====== Génération rapport ====== */
+function generateReport(){
   applyPieceRules();
 
+  // Admin
+  const batType = $('#bat_type').value;
   const inst =$('#inst_nom').value||'—';
   const siret=$('#inst_siret').value||'—';
   const mailI=$('#inst_email').value||'—';
   const date =$('#date_etude').value ? new Date($('#date_etude').value).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR');
   const audit=$('#audit_fullname').value||'—';
-  const bB=$('#brand_bouches').value||'—';
-  const bE=$('#brand_entrees').value||'—';
+  const bB   =$('#brand_bouches').value||'—';
+  const bE   =$('#brand_entrees').value||'—';
   const mailC=$('#client_email').value||'—';
-  const addr=$('#client_adresse').value||'—';
+  const addr =$('#client_adresse').value||'—';
 
+  // Logement
   const nbCh = Number($('#nb_chambres').value);
   const Tlog = titreLogement(nbCh);
+  const ppNames = getPPNames();
 
+  // Principal
   const main_d = Number($('#main_diam').value);
   const main_l = Number($('#main_len').value);
   const main_c45= Number($('#main_c45').value);
   const main_c90= Number($('#main_c90').value);
 
+  // Cuisine (Ø125 imposé)
   const cui_q_min= Number($('#cui_q_min').value||0);
   const cui_q_max= Number($('#cui_q_max').value||0);
   const cui_diam = 125;
@@ -483,6 +498,7 @@ $('#genBtn')?.addEventListener('click', ()=>{
   const cui_c45  = Number($('#cui_c45').value||0);
   const cui_c90  = Number($('#cui_c90').value||0);
 
+  // Autres pièces
   const autres = $$('#pieces_autres .piece').map(node=>({
     nom: node.querySelector('input[name="nom"]').value||'Pièce d’eau',
     q:   Number(node.querySelector('input[name="q"]').value||0),
@@ -492,22 +508,27 @@ $('#genBtn')?.addEventListener('click', ()=>{
     c90: Number(node.querySelector('input[name="c90"]').value||0),
   }));
 
+  // Rejet
   const rej_d = Number($('#rej_diam').value);
   const rej_l = Number($('#rej_len').value);
   const rej_c45= Number($('#rej_c45').value);
   const rej_c90= Number($('#rej_c90').value);
   const rej_sortie=$('#rej_sortie').value;
 
+  // Débits totaux
   let sumQmini=cui_q_min, sumQgrand=cui_q_max;
   autres.forEach(p=>{ sumQmini+=p.q; sumQgrand+=p.q; });
 
+  // Pièces d’eau PDC (PDC unique Galva)
   let rows=[], sumP=0;
 
+  // Cuisine
   const C = pdcBranchGalva(cui_diam, cui_len, cui_c30, cui_c45, cui_c90).p;
   rows.push({label:`Cuisine (Ø${cui_diam})`, qMin:cui_q_min, qGrand:cui_q_max,
              p:C, det:`Lin: ${(GALVA_PER_M[cui_diam]).toFixed(2)} Pa/m × ${cui_len} m ; 30°:${cui_c30} ; 45°:${cui_c45} ; 90°:${cui_c90}`});
   sumP+=C;
 
+  // Autres pièces
   autres.forEach(p=>{
     if (p.q>=45 && p.diam===80){ p.diam=125; }
     const Pd = pdcBranchGalva(p.diam, p.len, 0, p.c45, p.c90).p;
@@ -516,19 +537,23 @@ $('#genBtn')?.addEventListener('click', ()=>{
     sumP+=Pd;
   });
 
+  // Nombre de T = nb de pièces d’eau (cuisine incluse)
   const nT = 1 + autres.length;
 
+  // Principal extraction (avec T)
   const MAIN = pdcPrincipalGalva(main_d, main_l, main_c45, main_c90, nT);
   rows.push({label:`Réseau principal extraction Ø${main_d} (incl. ${nT} × T)`, qMin:sumQmini, qGrand:sumQgrand,
              p:MAIN.p, det:`Lin: ${(MAIN.pm).toFixed(2)} Pa/m × ${main_l} m ; 45°:${main_c45} ; 90°:${main_c90} ; T:${nT}×${GALVA_T}`});
   sumP+=MAIN.p;
 
+  // Rejet + sortie
   const RJ = pdcRejetGalva(rej_d, rej_l, rej_c45, rej_c90, rej_sortie);
   rows.push({label:`Réseau principal rejet Ø${rej_d} + Sortie (${rej_sortie==='facade'?'façade 11 Pa':'toiture 15 Pa'})`,
              qMin:sumQmini, qGrand:sumQgrand,
              p:RJ.p, det:`Lin: ${(RJ.pm).toFixed(2)} Pa/m × ${rej_l} m ; 45°:${rej_c45} ; 90°:${rej_c90} ; Sortie:${RJ.pSortie} Pa`});
   sumP+=RJ.p;
 
+  /* ===== ENTRÉES D’AIR (avec débit de fuite) ===== */
   let airList = baseEntreesAir(nbCh, getPPNames());
   const fuite = debitFuite($('#bat_type').value, nbCh);
   const besoinMini = sumQgrand - fuite;
@@ -536,6 +561,7 @@ $('#genBtn')?.addEventListener('click', ()=>{
   airList = aj.liste;
   const sumAir = airList.reduce((s,a)=>s+a.q,0);
 
+  /* ===== En-têtes rapport ===== */
   $('#r-head-1').innerHTML =
     `<div><b>Installateur :</b> ${inst} (${siret}) — ${mailI}</div>
      <div><b>Étude réalisée par :</b> ${audit}</div>`;
@@ -543,6 +569,7 @@ $('#genBtn')?.addEventListener('click', ()=>{
     `<div><b>Client :</b> ${addr} — ${mailC}<br><b>Type de bâtiment :</b> ${$('#bat_type').value==='maison'?'Maison individuelle':'Immeuble collectif'}<br><b>Type de logement :</b> ${Tlog}</div>
      <div><b>Date :</b> ${date} — <b>Marques :</b> Bouches=${bB||'—'} ; Entrées d’air=${bE}</div>`;
 
+  /* ===== Tableau principal (PDC unique) ===== */
   const tbody=$('#r-rows'); tbody.innerHTML='';
   rows.forEach(r=>{
     const tr=document.createElement('tr');
@@ -563,6 +590,7 @@ $('#genBtn')?.addEventListener('click', ()=>{
     <td>${aj.modif ? `<span class="calc">Ajustements auto : ${aj.note}</span>` : ''}</td>`;
   tbody.appendChild(trTot);
 
+  /* ===== Entrées d’air ===== */
   const airBody=$('#r-air'); airBody.innerHTML='';
   airList.forEach(a=>{
     const tr=document.createElement('tr'); tr.innerHTML = `<td class="left">${a.lib}</td><td>${a.q}</td>`;
@@ -575,6 +603,7 @@ $('#genBtn')?.addEventListener('click', ()=>{
   trFuite.innerHTML=`<td class="left"><span class="calc"><b>Débit de fuite</b> (m³/h)</span></td><td>${fuite.toFixed(0)}</td>`;
   airBody.appendChild(trFuite);
 
+  // Compactage auto (tenir sur 1 page)
   const rEl = $('#rapport');
   rEl.classList.remove('tight','ultra');
   const linesMain = rows.length + 1;
@@ -583,15 +612,19 @@ $('#genBtn')?.addEventListener('click', ()=>{
   if (totalLines > 24 && totalLines <= 32) rEl.classList.add('tight');
   if (totalLines > 32) rEl.classList.add('ultra');
 
+  // Affiche le rapport
   rEl.style.display='block';
-  rEl.scrollIntoView({behavior:'smooth',block:'start'});
-});
+  window.scrollTo({top:0,behavior:'smooth'});
+}
 
-/* init */
-$('#date_etude')?.valueAsDate = new Date();
-applyCuisineDefaults();
-applyPieceRules();
-showStep(1);
+/* ====== Init ====== */
+function init(){
+  const d = $('#date_etude'); if (d) d.valueAsDate = new Date();
+  applyCuisineDefaults();
+  applyPieceRules();
+  showStep(1);
+}
+document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>
