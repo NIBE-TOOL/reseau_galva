@@ -217,21 +217,18 @@
 
     <div class="grid-3" style="margin-top:10px">
       <div class="field"><label>Type de sortie</label>
-        <select id="sortie_type" onchange="onSortieTypeChange()">
+        <select id="sortie_type">
           <option value="toiture">Toiture</option>
           <option value="facade">Façade</option>
-        </select>
-      </div>
-      <div class="field"><label>Perte fixe sortie (Pa)</label>
-        <select id="sortie_val">
-          <option value="15">15</option>
-          <option value="11">11</option>
         </select>
       </div>
       <div class="field"><label>Diamètre sortie</label>
         <select id="sortie_diam">
           <option>125</option><option>160</option><option>200</option>
         </select>
+      </div>
+      <div class="field"><label>&nbsp;</label>
+        <div style="padding:8px;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:8px;">La perte de sortie est calculée automatiquement dans le rapport.</div>
       </div>
     </div>
 
@@ -286,17 +283,16 @@ const GALVA = {
   lin:{80:1.8,125:3.1,160:1.3},
   c45:{80:1.6,125:1.6,160:1.6},
   c90:{80:2.8,125:2.8,160:2.8},
-  tee:{80:13.4,125:13.4,160:13.4},
-  sortieFixe:{toiture:15, facade:11}
+  tee:{80:13.4,125:13.4,160:13.4}
 };
 
 /* Type logement + cuisine auto */
 function titreLogement(nb){ nb=+nb; if(nb<=1)return'T2'; if(nb===2)return'T3'; if(nb===3)return'T4'; if(nb===4)return'T5'; if(nb===5)return'T6'; return (nb>=7)?'T7+':'T7'; }
 function cuisineDefaults(nb){ nb=+nb; if(nb<=1)return{mini:30,grand:90}; if(nb===2)return{mini:45,grand:105}; if(nb===3)return{mini:45,grand:120}; return{mini:45,grand:135}; }
-function onChambresChange(){ applyCuisineDefaults(); applyT2MinimumRule(); }
+function onChambresChange(){ applyCuisineDefaults(); applyT2MinimumRule(); updateWCFlows(); }
 function applyCuisineDefaults(){ const nb=+($('#nb_chambres')?.value||3); const d=cuisineDefaults(nb); $('#cui_q_min').value=d.mini; $('#cui_q_max').value=d.grand; }
 
-/* Entrées d’air */
+/* Entrées d’air (mêmes règles que semi-rigide) */
 function debitFuite(type, nbCh){
   const T=titreLogement(nbCh);
   const maison={T2:45,T3:60,T4:75,T5:90,T6:105,'T7':120,'T7+':120};
@@ -365,7 +361,7 @@ function makePieceRow(defaultType='sdb'){
       <div class="field"><label>T (piquage)</label><input name="tee" type="number" value="1" min="0"></div>
     </div>
     <div class="actions" style="margin-top:8px">
-      <button type="button" class="ghost" onclick="this.closest('.piece').remove(); applyT2MinimumRule()">Supprimer</button>
+      <button type="button" class="ghost" onclick="this.closest('.piece').remove(); applyT2MinimumRule(); updateWCFlows()">Supprimer</button>
     </div>`;
   return box;
 }
@@ -374,9 +370,10 @@ function addPiece(){
   $('#pieces_autres').appendChild(el);
   applyBranchRules(el);
   applyT2MinimumRule();
+  updateWCFlows();
 }
 
-/* >>> Synchronisation nom/type + règles de débit (inclut T2) <<< */
+/* === Règles de débit + nom auto + gestion WC === */
 function applyBranchRules(piece){
   const nbCh = +($('#nb_chambres')?.value || 3);
   const T = titreLogement(nbCh);
@@ -387,15 +384,14 @@ function applyBranchRules(piece){
 
   const type = typeSel.value;
 
-  // 1) Débit selon type & typologie
+  // 1) Débit selon type (avant règles globales)
   if(type==='sdb'){
     qEl.value = (T==='T2' ? 15 : 30);
   }else if(type==='autre'){
     qEl.value = 15;
   }else if(type==='wc'){
-    const wcs = $$('#pieces_autres .piece').filter(p=> p.querySelector('select[name="type"]').value==='wc');
-    if (T==='T2' || T==='T3') qEl.value = 15;
-    else qEl.value = (wcs.length<=1 ? 30 : 15);
+    // valeur provisoire, puis harmonisation via updateWCFlows()
+    qEl.value = 15;
   }
 
   // 2) Nom auto si non personnalisé
@@ -406,8 +402,9 @@ function applyBranchRules(piece){
     nameEl.value = autoMap[type];
   }
 
-  // 3) Règle T2 : toutes à 15, sauf si UNE seule → 30
+  // 3) Règle T2 globale + harmonisation WC globale
   applyT2MinimumRule();
+  updateWCFlows();
 }
 
 /* === RÈGLE T2 : toutes les pièces d’eau à 15, sauf si une seule => 30 === */
@@ -416,14 +413,35 @@ function applyT2MinimumRule(){
   const T = titreLogement(nbCh);
   if (T !== 'T2') return;
   const pieces = Array.from(document.querySelectorAll('#pieces_autres .piece'));
-  if (pieces.length === 1){
+  // ne compte que les pièces d'eau hors cuisine
+  const count = pieces.length;
+  if (count === 1){
     const qEl = pieces[0].querySelector('input[name="q"]');
     if (qEl) qEl.value = 30;
-  } else if (pieces.length >= 2){
+  } else if (count >= 2){
     pieces.forEach(p=>{
       const qEl = p.querySelector('input[name="q"]');
       if (qEl) qEl.value = 15;
     });
+  }
+}
+
+/* === Harmonisation WC pour T4+ : 1 WC → 30 ; 2+ WC → 15 chacun. T2/T3 → 15 === */
+function updateWCFlows(){
+  const nbCh = +($('#nb_chambres')?.value || 3);
+  const T = titreLogement(nbCh);
+  const wcPieces = Array.from(document.querySelectorAll('#pieces_autres .piece'))
+    .filter(p => p.querySelector('select[name="type"]').value==='wc');
+  if (wcPieces.length===0) return;
+
+  if (T==='T2' || T==='T3'){
+    wcPieces.forEach(p=>{ p.querySelector('input[name="q"]').value = 15; });
+  } else { // T4 et +
+    if (wcPieces.length===1){
+      wcPieces[0].querySelector('input[name="q"]').value = 30;
+    } else {
+      wcPieces.forEach(p=>{ p.querySelector('input[name="q"]').value = 15; });
+    }
   }
 }
 
@@ -437,6 +455,7 @@ function pdcGalva(d,len,n45,n90,nT){
 /* Génération rapport */
 function generateReport(){
   applyT2MinimumRule(); // sécurité
+  updateWCFlows();      // sécurité
 
   const inst=$('#inst_nom').value||'—', siret=$('#inst_siret').value||'—', mailI=$('#inst_email').value||'—';
   const date=$('#date_etude').value ? new Date($('#date_etude').value).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR');
@@ -463,7 +482,7 @@ function generateReport(){
   }));
 
   const rej_d=+$('#rej_diam').value, rej_l=+$('#rej_len').value, rej_c45=+$('#rej_c45').value, rej_c90=+$('#rej_c90').value;
-  const sortie_type=$('#sortie_type').value, sortie_val=+($('#sortie_val').value|| (sortie_type==='toiture'?15:11)), sortie_diam=+$('#sortie_diam').value;
+  const sortie_type=$('#sortie_type').value, sortie_diam=+$('#sortie_diam').value;
 
   let sumQmini=cui_q_min, sumQgrand=cui_q_max;
   autres.forEach(p=>{ sumQmini+=p.q; sumQgrand+=p.q; });
@@ -478,8 +497,11 @@ function generateReport(){
   const PM=pdcGalva(main_d,main_l,main_c45,main_c90,0);
   rows.push({label:`Réseau principal extraction Ø${main_d}`, qMin:sumQmini, qGrand:sumQgrand, p:PM.p, det:PM.det}); sumP+=PM.p;
 
-  const PR=pdcGalva(rej_d,rej_l,rej_c45,rej_c90,0); const pRejetTot=PR.p+ (sortie_type==='toiture'?15:11);
-  rows.push({label:`Réseau principal rejet Ø${rej_d} + Sortie (${sortie_type==='toiture'?'toiture':'façade'} Ø${sortie_diam})`, qMin:sumQmini, qGrand:sumQgrand, p:pRejetTot, det:`${PR.det} ; Sortie ${sortie_val} Pa`}); sumP+=pRejetTot;
+  // Perte sortie automatique (GALVA : toiture 15 Pa / façade 11 Pa)
+  const sortiePa = (sortie_type==='toiture') ? 15 : 11;
+
+  const PR=pdcGalva(rej_d,rej_l,rej_c45,rej_c90,0); const pRejetTot=PR.p+ sortiePa;
+  rows.push({label:`Réseau principal rejet Ø${rej_d} + Sortie (${sortie_type==='toiture'?'toiture':'façade'} Ø${sortie_diam})`, qMin:sumQmini, qGrand:sumQgrand, p:pRejetTot, det:`${PR.det} ; Sortie ${sortiePa} Pa`}); sumP+=pRejetTot;
 
   let airList=baseEntreesAir(nbCh,getPPNames());
   const fuite=debitFuite(bat,nbCh);
@@ -491,13 +513,9 @@ function generateReport(){
   $('#r-head-2').innerHTML = `<div><b>Client :</b> ${addr} — ${mailC}<br><b>Type de bâtiment :</b> ${bat==='maison'?'Maison individuelle':'Immeuble collectif'}<br><b>Type de logement :</b> ${Tlog}</div><div><b>Date :</b> ${date} — <b>Marques :</b> Bouches=${bB||'—'} ; Entrées d’air=${bE}</div>`;
 
   const tbody=$('#r-rows'); tbody.innerHTML='';
-  rows.forEach(r=>{ const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="left">${r.label}</td><td>${r.qMin.toFixed(0)}</td><td>${r.qGrand.toFixed(0)}</td><td>${r.p.toFixed(2)}</td><td class="calc">${r.det}</td>`;
-    tbody.appendChild(tr);
-  });
+  rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class="left">${r.label}</td><td>${r.qMin.toFixed(0)}</td><td>${r.qGrand.toFixed(0)}</td><td>${r.p.toFixed(2)}</td><td class="calc">${r.det}</td>`; tbody.appendChild(tr); });
   const trTot=document.createElement('tr'); trTot.className='sum';
-  trTot.innerHTML=`<td class="left">TOTAL — Somme des débits / PDC</td><td>${sumQmini.toFixed(0)}</td><td>${sumQgrand.toFixed(0)}</td><td>${sumP.toFixed(2)}</td><td>${aj.modif?`<span class="calc">Ajustements auto : ${aj.note}</span>`:''}</td>`;
-  tbody.appendChild(trTot);
+  trTot.innerHTML=`<td class="left">TOTAL — Somme des débits / PDC</td><td>${sumQmini.toFixed(0)}</td><td>${sumQgrand.toFixed(0)}</td><td>${sumP.toFixed(2)}</td><td>${aj.modif?`<span class="calc">Ajustements auto : ${aj.note}</span>`:''}</td>`; tbody.appendChild(trTot);
 
   const airBody=$('#r-air'); airBody.innerHTML='';
   airList.forEach(a=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class="left">${a.lib}</td><td>${a.q}</td>`; airBody.appendChild(tr); });
@@ -512,13 +530,10 @@ function generateReport(){
   rEl.style.display='block'; window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* Sortie: synchronise le Pa fixe selon le type */
-function onSortieTypeChange(){ const t=$('#sortie_type').value; $('#sortie_val').value=(t==='toiture'?'15':'11'); }
-
 /* Init */
 function init(){
   const d=$('#date_etude'); if(d) d.valueAsDate=new Date();
-  applyCuisineDefaults(); applyT2MinimumRule(); onSortieTypeChange(); showStep(1);
+  applyCuisineDefaults(); applyT2MinimumRule(); updateWCFlows(); showStep(1);
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
