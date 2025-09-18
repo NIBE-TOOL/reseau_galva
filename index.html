@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Note de calcul réseau GALVA pour NIBE S735</title>
+<title>Note de calcul réseau Galva pour NIBE S735</title>
 <style>
-  :root{ --line:#e3e7ee; --text:#1f2630; --muted:#5b6676; --accent:#1b6bd6; --zebra:#f7f9fc; --fs-body:14px; --fs-small:12px; --fs-justif:11px; }
+  :root{
+    --line:#e3e7ee; --text:#1f2630; --muted:#5b6676; --accent:#1b6bd6;
+    --zebra:#f7f9fc; --fs-body:14px; --fs-small:12px; --fs-justif:11px;
+  }
   *,*::before,*::after{box-sizing:border-box}
   html,body{margin:0;background:#fff;color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:1100px;margin:22px auto;padding:18px}
@@ -46,9 +49,9 @@
   .calc{font-size:var(--fs-justif);color:var(--muted);text-align:left;line-height:1.2}
   .sum{font-weight:700;background:#fbfdff}
 
-  #tabMain col.col-elt{width:36%}
-  #tabMain col.col-qmin{width:16%}
-  #tabMain col.col-qmax{width:16%}
+  #tabMain col.col-elt{width:38%}
+  #tabMain col.col-qmin{width:15%}
+  #tabMain col.col-qmax{width:15%}
   #tabMain col.col-pdc{width:12%}
   #tabMain col.col-det{width:20%}
 
@@ -78,7 +81,7 @@
 </head>
 <body>
 <div class="wrap no-print">
-  <h1>Note de calcul réseau GALVA pour NIBE S735</h1>
+  <h1>Note de calcul réseau Galva pour NIBE S735</h1>
 
   <div class="progress" aria-hidden="true">
     <div class="step"><span id="p1" style="width:0%"></span></div>
@@ -86,9 +89,10 @@
     <div class="step"><span id="p3" style="width:0%"></span></div>
     <div class="step"><span id="p4" style="width:0%"></span></div>
     <div class="step"><span id="p5" style="width:0%"></span></div>
+    <div class="step"><span id="p6" style="width:0%"></span></div>
   </div>
   <div class="labels" aria-hidden="true">
-    <span>Admin</span><span>Logement</span><span>Aspiration</span><span>Pièces d’eau</span><span>Rejet</span>
+    <span>Admin</span><span>Logement</span><span>Extraction</span><span>Pièces d’eau</span><span>Rejet</span><span>Rapport</span>
   </div>
 
   <!-- ÉTAPE 1 : ADMIN -->
@@ -112,13 +116,11 @@
       <div class="field"><label>Marque bouches d’extraction</label><input id="brand_bouches" value="NIBE"></div>
       <div class="field"><label>Marque entrées d’air</label><input id="brand_entrees" value="NIBE"></div>
 
-      <div class="field" style="grid-column:1/-1"><label>Adresse chantier</label><input id="client_adresse"></div>
+      <div class="field" style="grid-column:1/-1"><label>Nom et adresse du chantier</label><input id="client_adresse" placeholder="Nom client – Adresse complète"></div>
     </div>
     <div class="nav">
       <span></span>
-      <div class="actions">
-        <button type="button" onclick="showStep(2)">Continuer</button>
-      </div>
+      <div class="actions"><button type="button" onclick="showStep(2)">Continuer</button></div>
     </div>
   </div>
 
@@ -148,18 +150,16 @@
     </div>
     <div class="nav">
       <button class="secondary" type="button" onclick="showStep(1)">Retour</button>
-      <div class="actions">
-        <button type="button" onclick="applyCuisineDefaults();applyT2MinimumRule();showStep(3)">Continuer</button>
-      </div>
+      <div class="actions"><button type="button" onclick="applyCuisineDefaults();applyT2MinimumRule();updateWCFlows();enforceT2Minimum60();refreshAllPieces('#pieces');showStep(3)">Continuer</button></div>
     </div>
   </div>
 
-  <!-- ÉTAPE 3 : ASPIRATION GALVA -->
+  <!-- ÉTAPE 3 : CONDUIT EXTRACTION -->
   <div class="card" data-step="3" style="display:none">
-    <h3>3) Réseau principal — extraction (GALVA)</h3>
+    <h3>3) Conduit extraction</h3>
     <div class="grid-4">
       <div class="field"><label>Diamètre (mm)</label>
-        <select id="main_diam"><option>125</option><option>160</option><option>200</option></select>
+        <select id="main_diam"><option>125</option><option>160</option></select>
       </div>
       <div class="field"><label>Longueur droite (m)</label><input id="main_len" type="number" value="6" min="0" step="0.1"></div>
       <div class="field"><label>Coudes 45°</label><input id="main_c45" type="number" value="0" min="0"></div>
@@ -167,76 +167,64 @@
     </div>
     <div class="nav">
       <button class="secondary" type="button" onclick="showStep(2)">Retour</button>
-      <div class="actions">
-        <button type="button" onclick="showStep(4)">Continuer</button>
-      </div>
+      <div class="actions"><button type="button" onclick="showStep(4)">Continuer</button></div>
     </div>
   </div>
 
-  <!-- ÉTAPE 4 : PIÈCES D’EAU -->
+  <!-- ÉTAPE 4 : PIÈCES D'EAU (branches) -->
   <div class="card zebra" data-step="4" style="display:none">
-    <h3>4) Pièces d’eau (branches GALVA)</h3>
+    <h3>4) Pièces d’eau (réseau Galva)</h3>
 
+    <!-- Cuisine, Ø125 imposé -->
     <div class="piece" id="piece_cuisine">
-      <strong>CUISINE (Ø125)</strong>
-      <div class="grid-3" style="margin-top:8px">
+      <strong>CUISINE — Ø125</strong>
+      <div class="grid-4" style="margin-top:8px">
         <div class="field"><label>Débit mini (m³/h)</label><input id="cui_q_min" type="number" readonly></div>
         <div class="field"><label>Grand débit cuisine (m³/h)</label><input id="cui_q_max" type="number" readonly></div>
-        <div class="field"><label>Longueur droite (m)</label><input id="cui_len" type="number" value="5" min="0" step="0.1"></div>
+        <div class="field"><label>Longueur droite (m)</label><input id="cui_len" type="number" value="6" min="0" step="0.1"></div>
+        <div class="field"><label>Coudes 90°</label><input id="cui_c90" type="number" value="1" min="0"></div>
       </div>
-      <div class="grid-4" style="margin-top:8px">
+      <div class="grid-3">
         <div class="field"><label>Coudes 45°</label><input id="cui_c45" type="number" value="0" min="0"></div>
-        <div class="field"><label>Coudes 90°</label><input id="cui_c90" type="number" value="2" min="0"></div>
-        <div class="field"><label>T (piquage)</label><input id="cui_T" type="number" value="1" min="0"></div>
-        <div class="field"><label>Diamètre branche</label><input value="125" readonly></div>
+        <div class="field"><label>Coudes 30°</label><input id="cui_c30" type="number" value="0" min="0"></div>
+        <div class="field"><label>Diamètre</label><input value="125" readonly></div>
       </div>
     </div>
 
-    <div id="pieces_autres"></div>
+    <div id="pieces"></div>
     <div class="actions" style="margin-top:10px">
       <button type="button" class="secondary" onclick="addPiece()">+ Ajouter une pièce d'eau</button>
     </div>
 
     <div class="nav">
       <button class="secondary" type="button" onclick="showStep(3)">Retour</button>
-      <div class="actions">
-        <button type="button" onclick="showStep(5)">Continuer</button>
-      </div>
+      <div class="actions"><button type="button" onclick="showStep(5)">Continuer</button></div>
     </div>
   </div>
 
-  <!-- ÉTAPE 5 : REJET GALVA -->
+  <!-- ÉTAPE 5 : REJET + SORTIE -->
   <div class="card" data-step="5" style="display:none">
-    <h3>5) Réseau principal — rejet (GALVA) & sortie</h3>
+    <h3>5) Conduit rejet (PAC – extérieur)</h3>
     <div class="grid-4">
-      <div class="field"><label>Diamètre (mm)</label><select id="rej_diam"><option>125</option><option>160</option><option>200</option></select></div>
+      <div class="field"><label>Diamètre (mm)</label><select id="rej_diam"><option>125</option><option>160</option></select></div>
       <div class="field"><label>Longueur droite (m)</label><input id="rej_len" type="number" value="6" min="0" step="0.1"></div>
       <div class="field"><label>Coudes 45°</label><input id="rej_c45" type="number" value="0" min="0"></div>
       <div class="field"><label>Coudes 90°</label><input id="rej_c90" type="number" value="1" min="0"></div>
     </div>
 
-    <div class="grid-3" style="margin-top:10px">
+    <div class="grid-2" style="margin-top:10px">
       <div class="field"><label>Type de sortie</label>
         <select id="sortie_type">
           <option value="toiture">Toiture</option>
           <option value="facade">Façade</option>
         </select>
       </div>
-      <div class="field"><label>Diamètre sortie</label>
-        <select id="sortie_diam">
-          <option>125</option><option>160</option><option>200</option>
-        </select>
-      </div>
-      <div class="field"><label>&nbsp;</label>
-        <div style="padding:8px;color:var(--muted);font-size:12px;border:1px dashed var(--line);border-radius:8px;">La perte de sortie est calculée automatiquement dans le rapport.</div>
-      </div>
+      <div class="field"></div>
     </div>
 
     <div class="nav">
       <button class="secondary" type="button" onclick="showStep(4)">Retour</button>
-      <div class="actions">
-        <button id="genBtn" type="button" onclick="generateReport()">Générer le rapport</button>
-      </div>
+      <div class="actions"><button id="genBtn" type="button" onclick="generateReport()">Générer le rapport</button></div>
     </div>
   </div>
 </div>
@@ -244,7 +232,7 @@
 <!-- ===== RAPPORT FINAL ===== -->
 <div class="wrap" id="rapport" style="display:none">
   <div class="header-bar">
-    <h2 style="margin:0">Note de calcul réseau GALVA pour NIBE S735</h2>
+    <h2 style="margin:0">Note de calcul réseau Galva pour NIBE S735</h2>
     <button type="button" class="secondary printBtn no-print" onclick="window.print()">Imprimer le rapport</button>
   </div>
   <div class="header" id="r-head-1"></div>
@@ -260,7 +248,7 @@
         <th class="left">Élément</th>
         <th>Débit mini<br>(m³/h)</th>
         <th>Grand débit cuisine<br>(m³/h)</th>
-        <th>Pertes de charges<br>(Pa)</th>
+        <th>PDC<br>(Pa)</th>
         <th class="left">Détails calcul</th>
       </tr>
     </thead>
@@ -278,21 +266,14 @@
 </div>
 
 <script>
-/* ===== Données GALVA ===== */
-const GALVA = {
-  lin:{80:1.8,125:3.1,160:1.3},
-  c45:{80:1.6,125:1.6,160:1.6},
-  c90:{80:2.8,125:2.8,160:2.8},
-  tee:{80:13.4,125:13.4,160:13.4}
-};
+/* ======== Données pertes de charge — GALVA ======== */
+const LIN = { 80:1.8, 125:3.1, 160:1.3 }; // Pa/m
+const PC30 = 1.2, PC45 = 1.6, PC90 = 2.8; // Pa par coude
+// Cuisine Ø125 imposé
 
-/* Type logement + cuisine auto */
+/* ======== Règles logement / débits identiques au semi-rigide ======== */
 function titreLogement(nb){ nb=+nb; if(nb<=1)return'T2'; if(nb===2)return'T3'; if(nb===3)return'T4'; if(nb===4)return'T5'; if(nb===5)return'T6'; return (nb>=7)?'T7+':'T7'; }
 function cuisineDefaults(nb){ nb=+nb; if(nb<=1)return{mini:30,grand:90}; if(nb===2)return{mini:45,grand:105}; if(nb===3)return{mini:45,grand:120}; return{mini:45,grand:135}; }
-function onChambresChange(){ applyCuisineDefaults(); applyT2MinimumRule(); updateWCFlows(); }
-function applyCuisineDefaults(){ const nb=+($('#nb_chambres')?.value||3); const d=cuisineDefaults(nb); $('#cui_q_min').value=d.mini; $('#cui_q_max').value=d.grand; }
-
-/* Entrées d’air (mêmes règles que semi-rigide) */
 function debitFuite(type, nbCh){
   const T=titreLogement(nbCh);
   const maison={T2:45,T3:60,T4:75,T5:90,T6:105,'T7':120,'T7+':120};
@@ -320,9 +301,9 @@ function ajusterEntreesAir(liste, besoinMini){
   return {liste, note:note.trim(), modif};
 }
 
-/* Helpers UI */
+/* ======== UI helpers ======== */
 const $=s=>document.querySelector(s); const $$=s=>Array.from(document.querySelectorAll(s));
-function showStep(n){ $$('.card').forEach(c=> c.style.display=(+c.dataset.step===n?'':'none')); for(let i=1;i<=5;i++){ const el=$('#p'+i); if(el) el.style.width=(i<=n?'100%':'0%'); } }
+function showStep(n){ $$('.card').forEach(c=> c.style.display=(+c.dataset.step===n?'':'none')); for(let i=1;i<=6;i++){ const el=$('#p'+i); if(el) el.style.width=(i<=n?'100%':'0%'); } }
 const ppListEl=$('#pp_list');
 function makePPRow(name='Pièce principale'){
   const row=document.createElement('div'); row.className='row'; row.style.marginTop='6px';
@@ -334,7 +315,7 @@ function makePPRow(name='Pièce principale'){
 function ppAdd(){ ppListEl.appendChild(makePPRow('Bureau')); }
 function getPPNames(){ return Array.from(document.querySelectorAll('#pp_list .pp_name')).map(i=>i.value.trim()).filter(Boolean); }
 
-/* Pièces d’eau (branches) */
+/* ======== Pièces d'eau (branches) ======== */
 function makePieceRow(defaultType='sdb'){
   const box=document.createElement('div'); box.className='piece';
   box.innerHTML=`
@@ -351,92 +332,91 @@ function makePieceRow(defaultType='sdb'){
       </div>
       <div class="field"><label>Débit (m³/h)</label><input name="q" type="number" value="30" readonly></div>
       <div class="field"><label>Diamètre</label>
-        <select name="diam"><option>80</option><option selected>125</option><option>160</option></select>
+        <select name="d">
+          <option value="80" selected>80</option>
+          <option value="125">125</option>
+          <option value="160">160</option>
+        </select>
       </div>
     </div>
-    <div class="grid-4" style="margin-top:8px">
+    <div class="grid-4">
       <div class="field"><label>Longueur droite (m)</label><input name="len" type="number" value="5" min="0" step="0.1"></div>
+      <div class="field"><label>Coudes 30°</label><input name="c30" type="number" value="0" min="0"></div>
       <div class="field"><label>Coudes 45°</label><input name="c45" type="number" value="0" min="0"></div>
       <div class="field"><label>Coudes 90°</label><input name="c90" type="number" value="1" min="0"></div>
-      <div class="field"><label>T (piquage)</label><input name="tee" type="number" value="1" min="0"></div>
     </div>
     <div class="actions" style="margin-top:8px">
-      <button type="button" class="ghost" onclick="this.closest('.piece').remove(); applyT2MinimumRule(); updateWCFlows()">Supprimer</button>
+      <button type="button" class="ghost" onclick="this.closest('.piece').remove(); applyT2MinimumRule(); updateWCFlows(); enforceT2Minimum60()">Supprimer</button>
     </div>`;
   return box;
 }
 function addPiece(){
   const el = makePieceRow('sdb');
-  $('#pieces_autres').appendChild(el);
+  $('#pieces').appendChild(el);
   applyBranchRules(el);
   applyT2MinimumRule();
   updateWCFlows();
+  enforceT2Minimum60();
 }
 
-/* === Règles de débit + nom auto + gestion WC === */
+/* ======== Règles débit / libellé + T2 + WC ======== */
+function onChambresChange(){
+  applyCuisineDefaults();
+  applyT2MinimumRule();
+  updateWCFlows();
+  enforceT2Minimum60();
+  refreshAllPieces('#pieces');
+}
+function applyCuisineDefaults(){
+  const nb=+($('#nb_chambres')?.value||3); const d=cuisineDefaults(nb);
+  $('#cui_q_min').value=d.mini; $('#cui_q_max').value=d.grand;
+}
 function applyBranchRules(piece){
-  const nbCh = +($('#nb_chambres')?.value || 3);
-  const T = titreLogement(nbCh);
-
   const typeSel = piece.querySelector('select[name="type"]');
   const qEl     = piece.querySelector('input[name="q"]');
   const nameEl  = piece.querySelector('input[name="nom"]');
-
   const type = typeSel.value;
 
-  // 1) Débit selon type (avant règles globales)
-  if(type==='sdb'){
-    qEl.value = (T==='T2' ? 15 : 30);
-  }else if(type==='autre'){
-    qEl.value = 15;
-  }else if(type==='wc'){
-    // valeur provisoire, puis harmonisation via updateWCFlows()
-    qEl.value = 15;
-  }
+  if(type==='sdb'){ qEl.value = 30; }
+  else if(type==='autre'){ qEl.value = 15; }
+  else if(type==='wc'){ qEl.value = 15; } // harmonisé après
 
-  // 2) Nom auto si non personnalisé
   const autoMap = { sdb: 'Salle de bain', wc: 'WC', autre: 'Buanderie' };
   const autoNames = new Set(Object.values(autoMap));
   const current = (nameEl.value || '').trim();
-  if (current === '' || autoNames.has(current)) {
-    nameEl.value = autoMap[type];
-  }
+  if (current === '' || autoNames.has(current)) { nameEl.value = autoMap[type]; }
 
-  // 3) Règle T2 globale + harmonisation WC globale
   applyT2MinimumRule();
   updateWCFlows();
+  enforceT2Minimum60();
 }
-
-/* === RÈGLE T2 : toutes les pièces d’eau à 15, sauf si une seule => 30 === */
+/* T2 : toutes à 15, sauf si UNE seule → 30 */
 function applyT2MinimumRule(){
   const nbCh = +($('#nb_chambres')?.value || 3);
   const T = titreLogement(nbCh);
   if (T !== 'T2') return;
-  const pieces = Array.from(document.querySelectorAll('#pieces_autres .piece'));
-  // ne compte que les pièces d'eau hors cuisine
-  const count = pieces.length;
-  if (count === 1){
+  const pieces = Array.from(document.querySelectorAll('#pieces .piece'));
+  if (pieces.length === 1){
     const qEl = pieces[0].querySelector('input[name="q"]');
     if (qEl) qEl.value = 30;
-  } else if (count >= 2){
+  } else if (pieces.length >= 2){
     pieces.forEach(p=>{
       const qEl = p.querySelector('input[name="q"]');
       if (qEl) qEl.value = 15;
     });
   }
 }
-
-/* === Harmonisation WC pour T4+ : 1 WC → 30 ; 2+ WC → 15 chacun. T2/T3 → 15 === */
+/* Harmonisation WC : T2/T3 tous 15 ; T4+ → 1 WC=30 ; 2+=15 chacun */
 function updateWCFlows(){
   const nbCh = +($('#nb_chambres')?.value || 3);
   const T = titreLogement(nbCh);
-  const wcPieces = Array.from(document.querySelectorAll('#pieces_autres .piece'))
+  const wcPieces = Array.from(document.querySelectorAll('#pieces .piece'))
     .filter(p => p.querySelector('select[name="type"]').value==='wc');
   if (wcPieces.length===0) return;
 
   if (T==='T2' || T==='T3'){
     wcPieces.forEach(p=>{ p.querySelector('input[name="q"]').value = 15; });
-  } else { // T4 et +
+  } else {
     if (wcPieces.length===1){
       wcPieces[0].querySelector('input[name="q"]').value = 30;
     } else {
@@ -444,78 +424,152 @@ function updateWCFlows(){
     }
   }
 }
+/* Assure T2 = 60 m³/h mini (création auto si 0 pièce ; 1 pièce → 30 ; 2+ → 15) */
+function enforceT2Minimum60(){
+  const nbCh = +($('#nb_chambres')?.value || 3);
+  const T = titreLogement(nbCh);
+  if (T !== 'T2') return;
 
-/* Calcul PDC GALVA */
-function pdcGalva(d,len,n45,n90,nT){
-  const p=(GALVA.lin[d]||0)*len + (GALVA.c45[d]||0)*(n45||0) + (GALVA.c90[d]||0)*(n90||0) + (GALVA.tee[d]||0)*(nT||0);
-  const det=`Lin ${GALVA.lin[d]||0} Pa/m × ${len} m ; 45° ${(GALVA.c45[d]||0)} × ${n45||0} ; 90° ${(GALVA.c90[d]||0)} × ${n90||0} ; T ${(GALVA.tee[d]||0)} × ${nT||0}`;
-  return {p,det};
+  const cont = $('#pieces');
+  let pieces = Array.from(cont.querySelectorAll('.piece'));
+  if (pieces.length === 0){
+    const auto = makePieceRow('sdb');
+    cont.appendChild(auto);
+    const nameEl = auto.querySelector('input[name="nom"]');
+    if (nameEl) nameEl.value = 'Salle de bain (auto)';
+    const lenEl = auto.querySelector('input[name="len"]');
+    if (lenEl && !lenEl.value) lenEl.value = 0;
+    applyBranchRules(auto);
+  }
+  applyT2MinimumRule();
+}
+/* Rafraîchit toutes les pièces */
+function refreshAllPieces(containerSel){
+  document.querySelectorAll(containerSel+' .piece').forEach(p => applyBranchRules(p));
 }
 
-/* Génération rapport */
-function generateReport(){
-  applyT2MinimumRule(); // sécurité
-  updateWCFlows();      // sécurité
+/* ======== Calculs ======== */
+function pdcBranch(diam,len,c30,c45,c90){
+  const p = (LIN[diam]||0)*len + (c30||0)*PC30 + (c45||0)*PC45 + (c90||0)*PC90;
+  const det = `Lin ${(+LIN[diam]||0).toFixed(2)} Pa/m × ${len} m ; 30° ${PC30}×${c30||0} ; 45° ${PC45}×${c45||0} ; 90° ${PC90}×${c90||0}`;
+  return { p, det };
+}
+function pdcMain(diam,len,c45,c90){
+  const p = (LIN[diam]||0)*len + (c45||0)*PC45 + (c90||0)*PC90;
+  const det = `Lin ${(+LIN[diam]||0).toFixed(2)} Pa/m × ${len} m ; 45° ${PC45}×${c45||0} ; 90° ${PC90}×${c90||0}`;
+  return { p, det };
+}
+function perteSortieGalva(type){ return (type==='toiture')?15:11; }
 
+/* ======== Rapport ======== */
+function generateReport(){
+  // Admin
   const inst=$('#inst_nom').value||'—', siret=$('#inst_siret').value||'—', mailI=$('#inst_email').value||'—';
   const date=$('#date_etude').value ? new Date($('#date_etude').value).toLocaleDateString('fr-FR') : new Date().toLocaleDateString('fr-FR');
   const audit=$('#audit_fullname').value||'—', bB=$('#brand_bouches').value||'—', bE=$('#brand_entrees').value||'—';
   const mailC=$('#client_email').value||'—', addr=$('#client_adresse').value||'—', bat=$('#bat_type').value;
 
+  // Logement
   const nbCh=+$('#nb_chambres').value, Tlog=titreLogement(nbCh);
-  applyCuisineDefaults();
   const ppNames=getPPNames();
+  // Cuisine (débits fixés par T)
+  const cuis=cuisineDefaults(nbCh);
+  $('#cui_q_min').value=cuis.mini; $('#cui_q_max').value=cuis.grand;
 
+  // Extraction
   const main_d=+$('#main_diam').value, main_l=+$('#main_len').value, main_c45=+$('#main_c45').value, main_c90=+$('#main_c90').value;
+  // Cuisine branche (Ø125)
+  const cui_len=+$('#cui_len').value||0, cui_c30=+$('#cui_c30').value||0, cui_c45=+$('#cui_c45').value||0, cui_c90=+$('#cui_c90').value||0;
 
-  const cui_q_min=+($('#cui_q_min').value||0), cui_q_max=+($('#cui_q_max').value||0), cui_len=+($('#cui_len').value||0);
-  const cui_c45=+($('#cui_c45').value||0), cui_c90=+($('#cui_c90').value||0), cui_T=+($('#cui_T').value||0);
-
-  const autres=$$('#pieces_autres .piece').map(n=>({
+  // Autres pièces
+  const autres=$$('#pieces .piece').map(n=>({
     nom:n.querySelector('input[name="nom"]').value||'Pièce d’eau',
+    type:n.querySelector('select[name="type"]').value,
     q:+(n.querySelector('input[name="q"]').value||0),
-    d:+(n.querySelector('select[name="diam"]').value||125),
+    d:+(n.querySelector('select[name="d"]').value||80),
     len:+(n.querySelector('input[name="len"]').value||0),
+    c30:+(n.querySelector('input[name="c30"]').value||0),
     c45:+(n.querySelector('input[name="c45"]').value||0),
     c90:+(n.querySelector('input[name="c90"]').value||0),
-    tee:+(n.querySelector('input[name="tee"]').value||0)
   }));
 
+  // Rejet + sortie
   const rej_d=+$('#rej_diam').value, rej_l=+$('#rej_len').value, rej_c45=+$('#rej_c45').value, rej_c90=+$('#rej_c90').value;
-  const sortie_type=$('#sortie_type').value, sortie_diam=+$('#sortie_diam').value;
+  const sortie_type=$('#sortie_type').value;
+  const pSortie = perteSortieGalva(sortie_type);
 
-  let sumQmini=cui_q_min, sumQgrand=cui_q_max;
+  // Débits totaux (mini / grand cuisine)
+  let sumQmini=cuis.mini, sumQgrand=cuis.grand;
   autres.forEach(p=>{ sumQmini+=p.q; sumQgrand+=p.q; });
 
-  let rows=[], sumP=0;
+  // ===== LIGNES RAPPORT & PDC (une seule colonne) =====
+  const rows=[]; let sumP=0;
 
-  const pcui=pdcGalva(125,cui_len,cui_c45,cui_c90,cui_T);
-  rows.push({label:`Cuisine (Ø125)`, qMin:cui_q_min, qGrand:cui_q_max, p:pcui.p, det:pcui.det}); sumP+=pcui.p;
+  // Cuisine branche (Ø125)
+  const PBcui = pdcBranch(125, cui_len, cui_c30, cui_c45, cui_c90);
+  rows.push({
+    label:`Cuisine — Ø125`,
+    qMin:cuis.mini, qGrand:cuis.grand,
+    p:PBcui.p,
+    det:PBcui.det
+  });
+  sumP += PBcui.p;
 
-  autres.forEach(p=>{ const r=pdcGalva(p.d,p.len,p.c45,p.c90,p.tee); rows.push({label:`${p.nom} (Ø${p.d})`, qMin:p.q, qGrand:p.q, p:r.p, det:r.det}); sumP+=r.p; });
+  // Autres pièces
+  autres.forEach(p=>{
+    const PB = pdcBranch(p.d, p.len, p.c30, p.c45, p.c90);
+    rows.push({
+      label:`${p.nom} — Ø${p.d}`, qMin:p.q, qGrand:p.q, p:PB.p, det:PB.det
+    });
+    sumP += PB.p;
+  });
 
-  const PM=pdcGalva(main_d,main_l,main_c45,main_c90,0);
-  rows.push({label:`Réseau principal extraction Ø${main_d}`, qMin:sumQmini, qGrand:sumQgrand, p:PM.p, det:PM.det}); sumP+=PM.p;
+  // Conduit extraction
+  const PM = pdcMain(main_d, main_l, main_c45, main_c90);
+  rows.push({
+    label:`Conduit extraction Ø${main_d}`,
+    qMin:sumQmini, qGrand:sumQgrand, p:PM.p, det:PM.det
+  });
+  sumP += PM.p;
 
-  // Perte sortie automatique (GALVA : toiture 15 Pa / façade 11 Pa)
-  const sortiePa = (sortie_type==='toiture') ? 15 : 11;
+  // Conduit rejet + sortie
+  const PR = pdcMain(rej_d, rej_l, rej_c45, rej_c90);
+  const pTotRejet = PR.p + pSortie;
+  rows.push({
+    label:`Conduit rejet (PAC – extérieur) Ø${rej_d} + Sortie (${sortie_type==='toiture'?'Toiture 15 Pa':'Façade 11 Pa'})`,
+    qMin:sumQmini, qGrand:sumQgrand, p:pTotRejet,
+    det:`${PR.det} ; Sortie ${pSortie} Pa`
+  });
+  sumP += pTotRejet;
 
-  const PR=pdcGalva(rej_d,rej_l,rej_c45,rej_c90,0); const pRejetTot=PR.p+ sortiePa;
-  rows.push({label:`Réseau principal rejet Ø${rej_d} + Sortie (${sortie_type==='toiture'?'toiture':'façade'} Ø${sortie_diam})`, qMin:sumQmini, qGrand:sumQgrand, p:pRejetTot, det:`${PR.det} ; Sortie ${sortiePa} Pa`}); sumP+=pRejetTot;
-
+  // Entrées d’air
   let airList=baseEntreesAir(nbCh,getPPNames());
   const fuite=debitFuite(bat,nbCh);
   const besoinMini=sumQgrand - fuite;
   const aj=ajusterEntreesAir(airList,besoinMini);
   airList=aj.liste; const sumAir=airList.reduce((s,a)=>s+a.q,0);
 
+  // ====== RENDU ======
   $('#r-head-1').innerHTML = `<div><b>Installateur :</b> ${inst} (${siret}) — ${mailI}</div><div><b>Étude réalisée par :</b> ${audit}</div>`;
   $('#r-head-2').innerHTML = `<div><b>Client :</b> ${addr} — ${mailC}<br><b>Type de bâtiment :</b> ${bat==='maison'?'Maison individuelle':'Immeuble collectif'}<br><b>Type de logement :</b> ${Tlog}</div><div><b>Date :</b> ${date} — <b>Marques :</b> Bouches=${bB||'—'} ; Entrées d’air=${bE}</div>`;
 
   const tbody=$('#r-rows'); tbody.innerHTML='';
-  rows.forEach(r=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class="left">${r.label}</td><td>${r.qMin.toFixed(0)}</td><td>${r.qGrand.toFixed(0)}</td><td>${r.p.toFixed(2)}</td><td class="calc">${r.det}</td>`; tbody.appendChild(tr); });
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="left">${r.label}</td>
+                  <td>${r.qMin.toFixed(0)}</td>
+                  <td>${r.qGrand.toFixed(0)}</td>
+                  <td>${r.p.toFixed(2)}</td>
+                  <td class="calc">${r.det}</td>`;
+    tbody.appendChild(tr);
+  });
   const trTot=document.createElement('tr'); trTot.className='sum';
-  trTot.innerHTML=`<td class="left">TOTAL — Somme des débits / PDC</td><td>${sumQmini.toFixed(0)}</td><td>${sumQgrand.toFixed(0)}</td><td>${sumP.toFixed(2)}</td><td>${aj.modif?`<span class="calc">Ajustements auto : ${aj.note}</span>`:''}</td>`; tbody.appendChild(trTot);
+  trTot.innerHTML=`<td class="left">TOTAL — Somme des débits / PDC</td>
+                   <td>${sumQmini.toFixed(0)}</td>
+                   <td>${sumQgrand.toFixed(0)}</td>
+                   <td>${sumP.toFixed(2)}</td>
+                   <td>${aj.modif?`<span class="calc">Ajustements EA : ${aj.note}</span>`:''}</td>`;
+  tbody.appendChild(trTot);
 
   const airBody=$('#r-air'); airBody.innerHTML='';
   airList.forEach(a=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td class="left">${a.lib}</td><td>${a.q}</td>`; airBody.appendChild(tr); });
@@ -530,10 +584,10 @@ function generateReport(){
   rEl.style.display='block'; window.scrollTo({top:0,behavior:'smooth'});
 }
 
-/* Init */
+/* ======== INIT ======== */
 function init(){
   const d=$('#date_etude'); if(d) d.valueAsDate=new Date();
-  applyCuisineDefaults(); applyT2MinimumRule(); updateWCFlows(); showStep(1);
+  applyCuisineDefaults(); showStep(1);
 }
 document.addEventListener('DOMContentLoaded', init);
 </script>
